@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>OnTicket</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <!-- ICONOS -->
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    >
+
+    <!-- QR -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+</head>
+
+<body>
+
+
+
+<!-- ========================================
+     LANDING
+======================================== -->
+
+<section class="landing" id="landing">
+
+    <video
+    autoplay
+    muted
+    loop
+    playsinline
+    class="bgVideo"
+>
+
+    <source
+        src="video/cepeda.mp4"
+        type="video/mp4"
+    >
+
+</video>
+
+<div class="landingOverlay"></div>
+
+    <div class="landingContent">
+
+        <img
+            src="img/logo.png"
+            class="landingLogo"
+        >
+
+        <h1>
+
+            ANDRÉS CEPEDA TOUR 2026
+
+        </h1>
+
+        <p>
+
+            Vive una experiencia inolvidable con OnTicket
+
+        </p>
+
+        <button
+            class="exploreBtn"
+            onclick="mostrarHome()"
+        >
+
+            EXPLORAR EVENTOS
+
+        </button>
+
+    </div>
+
+</section>
+
+
+
+
+
+<!-- ========================================
+     HOME
+======================================== -->
+
+<section class="homePage" id="homePage">
+
+
+    <!-- HEADER -->
+
+    <header class="header">
+
+
+        <!-- LOGO -->
+
+        <div class="logoContainer">
+
+            <img
+                src="img/logo.png"
+                class="logoImg"
+            >
+
+        </div>
+
+
+
+        <!-- NAV -->
+
+        <nav class="navbar">
+
+            <a href="#" class="activeNav">
+
+                <i class="fa-solid fa-house"></i>
+
+                Inicio
+
+            </a>
+
+
+            <a href="#eventos">
+
+                <i class="fa-regular fa-star"></i>
+
+                Eventos
+
+            </a>
+
+
+            <a href="#categorias">
+
+                <i class="fa-solid fa-table-cells-large"></i>
+
+                Categorías
+
+            </a>
+
+
+            <a href="#" onclick="abrirAyuda()">
+
+                <i class="fa-regular fa-circle-question"></i>
+
+                Ayuda
+
+            </a>
+
+        </nav>
+
+
+
+        <!-- DERECHA -->
+
+        <div class="headerRight">
+
+
+            <!-- DARK MODE -->
+
+            <div class="themeToggle" onclick="toggleTheme()">
+
+                <span id="sunIcon">☀️</span>
+
+                <span id="moonIcon">🌙</span>
+
+            </div>
+
+
+
+            <!-- LOGIN -->
+
+            <div
+                class="loginBtn"
+                id="btnLogin"
+                onclick="abrirLogin()"
+            >
+
+                <i class="fa-solid fa-user"></i>
+
+                Iniciar sesión
+
+            </div>
+
+        </div>
+
+    </header>
+
+
+
+
+    <!-- HERO -->
+
+    <section class="hero">
+
+        <div class="heroText">
+
+            <h1>
+
+                Descubre los mejores eventos en vivo
+
+            </h1>
+
+            <p>
+
+                Compra entradas de manera rápida, segura y moderna.
+
+            </p>
+
+        </div>
+
+    </section>
+
+
+
+
+    <!-- BUSCADOR -->
+
+    <div class="searchContainer">
+
+        <input
+            type="text"
+            id="searchInput"
+            placeholder="Buscar artista o evento..."
+            onkeyup="buscarEventos()"
+        >
+
+    </div>
+
+
+
+
+    <!-- CATEGORÍAS -->
+
+    <section class="categories" id="categorias">
+
+
+        <div class="categoryCard">
+
+            <i class="fa-solid fa-music"></i>
+
+            <p>Conciertos</p>
+
+        </div>
+
+
+        <div class="categoryCard">
+
+            <i class="fa-solid fa-microphone"></i>
+
+            <p>Festivales</p>
+
+        </div>
+
+
+        <div class="categoryCard">
+
+            <i class="fa-solid fa-face-laugh"></i>
+
+            <p>Humor</p>
+
+        </div>
+
+
+        <div class="categoryCard">
+
+            <i class="fa-solid fa-futbol"></i>
+
+            <p>Deportes</p>
+
+        </div>
+
+    </section>
+
+
+
+
+    <!-- EVENTOS -->
+
+    <section class="eventsSection" id="eventos">
+
+
+        <!-- EVENTO 1 -->
+
+        <div
+            class="eventCard"
+            onclick="abrirEvento()"
+        >
+
+            <img src="img/cepeda.jpeg">
+
+            <div class="eventCardInfo">
+
+                <h3>
+
+                    Andrés Cepeda
+
+                </h3>
+
+                <p>
+
+                    Tour 2025
+
+                </p>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- EVENTO 2 -->
+
+        <div class="eventCard">
+
+            <img src="img/donjediondo.jpeg">
+
+            <div class="eventCardInfo">
+
+                <h3>
+
+                    Don Jediondo
+
+                </h3>
+
+                <p>
+
+                    Humor Colombiano
+
+                </p>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- EVENTO 3 -->
+
+        <div class="eventCard">
+
+            <img src="img/luisalfonso.jpeg">
+
+            <div class="eventCardInfo">
+
+                <h3>
+
+                    Luis Alfonso
+
+                </h3>
+
+                <p>
+
+                    La Última Copa
+
+                </p>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+
+    <!-- BENEFICIOS -->
+
+    <section class="benefits">
+
+
+        <div class="benefit">
+
+            <i class="fa-solid fa-shield-halved"></i>
+
+            <div>
+
+                <h4>
+
+                    COMPRA SEGURA
+
+                </h4>
+
+                <p>
+
+                    Tus datos están protegidos
+
+                </p>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="benefit">
+
+            <i class="fa-solid fa-ticket"></i>
+
+            <div>
+
+                <h4>
+
+                    MEJORES EVENTOS
+
+                </h4>
+
+                <p>
+
+                    Shows y conciertos premium
+
+                </p>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="benefit">
+
+            <i class="fa-solid fa-headset"></i>
+
+            <div>
+
+                <h4>
+
+                    ATENCIÓN 24/7
+
+                </h4>
+
+                <p>
+
+                    Soporte disponible siempre
+
+                </p>
+
+            </div>
+
+        </div>
+
+    </section>
+
+</section>
+
+
+
+
+
+<!-- ========================================
+     EVENTO PAGE
+======================================== -->
+
+<section class="eventoPage" id="eventoPage">
+
+
+    <header class="header">
+
+        <div class="logoContainer">
+
+            <img
+                src="img/logo.png"
+                class="logoImg"
+            >
+
+        </div>
+
+
+        <nav class="navbar">
+
+            <a href="#" onclick="volverHome()">
+
+                <i class="fa-solid fa-house"></i>
+
+                Inicio
+
+            </a>
+
+
+            <a href="#" class="activeNav">
+
+                <i class="fa-solid fa-ticket"></i>
+
+                Evento
+
+            </a>
+
+        </nav>
+
+
+        <div class="headerRight">
+
+            <div class="themeToggle" onclick="toggleTheme()">
+
+                <span id="sunIcon">☀️</span>
+
+                <span id="moonIcon">🌙</span>
+
+            </div>
+
+        </div>
+
+    </header>
+
+
+
+
+    <!-- CONTENIDO -->
+
+    <section class="mainContainer">
+
+
+        <!-- IZQUIERDA -->
+
+        <div class="leftPanel">
+
+            <div class="eventCardDetail">
+
+                <img
+                    src="img/cepeda.jpeg"
+                    class="eventPoster"
+                >
+
+                <div class="eventInfo">
+
+                    <h2>
+
+                        Andrés Cepeda
+
+                    </h2>
+
+                    <p>
+
+                        Tour 2025
+
+                    </p>
+
+                    <div class="eventData">
+
+                        <p>
+
+                            <i class="fa-regular fa-calendar"></i>
+
+                            Sábado 24 Mayo
+
+                        </p>
+
+                        <p>
+
+                            <i class="fa-solid fa-location-dot"></i>
+
+                            Parque Malocas
+
+                        </p>
+
+                        <p>
+
+                            <i class="fa-regular fa-clock"></i>
+
+                            8:00 PM
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+
+        <!-- CENTRO -->
+
+        <div class="centerPanel">
+
+            <div class="mapTitle">
+
+                Selecciona tu ubicación
+
+            </div>
+
+
+            <!-- TARIMA -->
+
+            <div class="stageContainer">
+
+                <div class="stage">
+
+                    TARIMA
+
+                </div>
+
+            </div>
+
+
+            <!-- PALCOS DIAMANTE -->
+
+            <div class="vipSection diamondSection">
+
+                <h3>
+
+                    PALCO DIAMANTE - $4.500.000
+
+                </h3>
+
+                <div class="vipSeats">
+
+                    <div class="vipSeat diamond">D1</div>
+                    <div class="vipSeat diamond">D2</div>
+                    <div class="vipSeat diamond">D3</div>
+                    <div class="vipSeat diamond">D4</div>
+                    <div class="vipSeat diamond">D5</div>
+                    <div class="vipSeat diamond">D6</div>
+                    <div class="vipSeat diamond">D7</div>
+                    <div class="vipSeat diamond">D8</div>
+                    <div class="vipSeat diamond">D9</div>
+                    <div class="vipSeat diamond">D10</div>
+
+                    <div class="vipSeat diamond">D11</div>
+                    <div class="vipSeat diamond">D12</div>
+                    <div class="vipSeat diamond">D13</div>
+                    <div class="vipSeat diamond">D14</div>
+                    <div class="vipSeat diamond">D15</div>
+                    <div class="vipSeat diamond">D16</div>
+                    <div class="vipSeat diamond">D17</div>
+                    <div class="vipSeat diamond">D18</div>
+                    <div class="vipSeat diamond">D19</div>
+                    <div class="vipSeat diamond">D20</div>
+
+                </div>
+
+            </div>
+
+
+            <!-- PALCOS VIP -->
+
+            <div class="vipSection vipSectionOrange">
+
+                <h3>
+
+                    PALCO VIP - $3.000.000
+
+                </h3>
+
+                <div class="vipSeats">
+
+                    <div class="vipSeat vip">V1</div>
+                    <div class="vipSeat vip">V2</div>
+                    <div class="vipSeat vip">V3</div>
+                    <div class="vipSeat vip">V4</div>
+                    <div class="vipSeat vip">V5</div>
+                    <div class="vipSeat vip">V6</div>
+                    <div class="vipSeat vip">V7</div>
+                    <div class="vipSeat vip">V8</div>
+                    <div class="vipSeat vip">V9</div>
+                    <div class="vipSeat vip">V10</div>
+
+                    <div class="vipSeat vip">V11</div>
+                    <div class="vipSeat vip">V12</div>
+                    <div class="vipSeat vip">V13</div>
+                    <div class="vipSeat vip">V14</div>
+                    <div class="vipSeat vip">V15</div>
+                    <div class="vipSeat vip">V16</div>
+                    <div class="vipSeat vip">V17</div>
+                    <div class="vipSeat vip">V18</div>
+                    <div class="vipSeat vip">V19</div>
+                    <div class="vipSeat vip">V20</div>
+
+                </div>
+
+            </div>
+
+
+            <!-- GENERAL -->
+
+            <div class="generalLabel">
+
+                GENERAL - $90.000
+
+            </div>
+
+
+            <!-- MAPA -->
+
+            <div
+                class="seatMap"
+                id="grid"
+            >
+
+            </div>
+
+        </div>
+
+
+
+
+        <!-- DERECHA -->
+
+        <div class="rightPanel">
+
+
+            <!-- COMPRA -->
+
+            <div class="purchaseBox">
+
+                <h3>
+
+                    TU COMPRA
+
+                </h3>
+
+                <div id="selectedSeats">
+
+                </div>
+
+                <div class="purchaseTotal">
+
+                    <span>Total</span>
+
+                    <span id="total">$0</span>
+
+                </div>
+
+                <button
+                    class="continueBtn"
+                    onclick="abrirPago()"
+                >
+
+                    CONTINUAR
+
+                </button>
+
+            </div>
+
+
+
+            <!-- MIS COMPRAS -->
+
+            <div class="purchaseBox">
+
+                <h3>
+
+                    MIS COMPRAS
+
+                </h3>
+
+                <div id="misCompras">
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+</section>
+
+
+
+
+
+<!-- ========================================
+     LOGIN
+======================================== -->
+
+<div class="modal" id="loginModal" style="display:none;">
+
+    <div class="paymentModal">
+
+        <span
+            class="closeModal"
+            onclick="cerrarLogin()"
+        >
+
+            ✖
+
+        </span>
+
+
+        <h2>
+
+            Iniciar Sesión
+
+        </h2>
+
+
+        <input
+            type="email"
+            id="emailInput"
+            placeholder="Correo electrónico"
+            class="loginInput"
+        >
+
+
+        <input
+            type="password"
+            id="passwordInput"
+            placeholder="Contraseña"
+            class="loginInput"
+        >
+
+
+        <div class="rememberContainer">
+
+            <input
+                type="checkbox"
+                id="rememberUser"
+            >
+
+            <label for="rememberUser">
+
+                Recordar sesión
+
+            </label>
+
+        </div>
+
+
+        <button
+            class="confirmPaymentBtn"
+            onclick="iniciarSesion()"
+        >
+
+            CONTINUAR
+
+        </button>
+
+    </div>
+
+</div>
+
+
+
+
+
+<!-- ========================================
+     AYUDA
+======================================== -->
+
+<div class="modal" id="ayudaModal" style="display:none;">
+
+    <div class="ticketModal">
+
+        <span
+            class="closeModal"
+            onclick="cerrarAyuda()"
+        >
+
+            ✖
+
+        </span>
+
+        <h2>
+
+            Centro de Ayuda
+
+        </h2>
+
+        <div class="ticketCard">
+
+            <p>
+
+                <i class="fa-brands fa-whatsapp"></i>
+
+                WhatsApp:
+                +57 320 555 7788
+
+            </p>
+
+            <br>
+
+            <p>
+
+                <i class="fa-regular fa-envelope"></i>
+
+                soporte@onticket.com
+
+            </p>
+
+            <br>
+
+            <p>
+
+                Atención:
+                Lunes a Domingo 24/7
+
+            </p>
+
+            <br>
+
+            <p>
+
+                Todas las compras están protegidas bajo términos y condiciones OnTicket.
+
+            </p>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+
+
+<!-- ========================================
+     PASARELA
+======================================== -->
+
+<div class="modal" id="pagoModal" style="display:none;">
+
+    <div class="paymentModal">
+
+        <span
+            class="closeModal"
+            onclick="cerrarPago()"
+        >
+
+            ✖
+
+        </span>
+
+
+        <h2>
+
+            Método de pago
+
+        </h2>
+
+
+        <div class="paymentMethods">
+
+
+            <div
+                class="paymentMethod"
+                onclick="seleccionarMetodo('Nequi')"
+            >
+
+                <img src="img/nequi.png">
+
+                <p>Nequi</p>
+
+            </div>
+
+
+            <div
+                class="paymentMethod"
+                onclick="seleccionarMetodo('PSE')"
+            >
+
+                <img src="img/pse.png">
+
+                <p>PSE</p>
+
+            </div>
+
+
+            <div
+                class="paymentMethod"
+                onclick="seleccionarMetodo('Visa')"
+            >
+
+                <img src="img/visa.png">
+
+                <p>Tarjeta</p>
+
+            </div>
+
+
+            <div
+                class="paymentMethod"
+                onclick="seleccionarMetodo('Daviplata')"
+            >
+
+                <img src="img/daviplata.png">
+
+                <p>Daviplata</p>
+
+            </div>
+
+        </div>
+
+
+        <div id="metodoSeleccionado">
+
+            Ningún método seleccionado
+
+        </div>
+
+
+        <button
+            class="confirmPaymentBtn"
+            onclick="confirmarCompra()"
+        >
+
+            Confirmar pago
+
+        </button>
+
+    </div>
+
+</div>
+
+
+
+
+
+<!-- ========================================
+     TICKET
+======================================== -->
+
+<div class="modal" id="ticketModal" style="display:none;">
+
+    <div class="ticketModal">
+
+        <span
+            class="closeModal"
+            onclick="cerrarTicket()"
+        >
+
+            ✖
+
+        </span>
+
+
+        <h2>
+
+            🎟️ Ticket generado
+
+        </h2>
+
+
+        <div class="ticketCard">
+
+            <h3>
+
+                ONTICKET
+
+            </h3>
+
+
+            <div id="ticketTexto">
+
+            </div>
+
+
+            <div id="qrcode">
+
+            </div>
+
+
+            <div id="qrTimer">
+
+                Expira en:
+                <span id="timerText">30:00</span>
+
+            </div>
+
+        </div>
+
+
+        <button
+            class="downloadBtn"
+            onclick="descargarQR()"
+        >
+
+            Descargar QR
+
+        </button>
+
+    </div>
+
+</div>
+
+
+
+<!-- SCRIPT -->
+<script src="script.js"></script>
+
+</body>
+</html>
