@@ -8,6 +8,8 @@ const homePage = document.getElementById("homePage");
 
 const eventoPage = document.getElementById("eventoPage");
 
+const adminPage = document.getElementById("adminPage");
+
 const ayudaModal = document.getElementById("ayudaModal");
 
 const pagoModal = document.getElementById("pagoModal");
@@ -16,31 +18,41 @@ const ticketModal = document.getElementById("ticketModal");
 
 const loginModal = document.getElementById("loginModal");
 
-const adminModal = document.getElementById("adminModal");
+const adminTableBody =
+document.getElementById("adminTableBody");
 
-const adminCompras = document.getElementById("adminCompras");
+const searchInput =
+document.getElementById("searchInput");
 
-const searchInput = document.getElementById("searchInput");
+const metodoSeleccionado =
+document.getElementById("metodoSeleccionado");
 
-const metodoSeleccionado = document.getElementById("metodoSeleccionado");
+const timerText =
+document.getElementById("timerText");
 
-const timerText = document.getElementById("timerText");
+const ticketTexto =
+document.getElementById("ticketTexto");
 
-const ticketTexto = document.getElementById("ticketTexto");
+const qrcode =
+document.getElementById("qrcode");
 
-const qrcode = document.getElementById("qrcode");
+const selectedContainer =
+document.getElementById("selectedSeats");
 
-const selectedContainer = document.getElementById("selectedSeats");
+const totalText =
+document.getElementById("total");
 
-const totalText = document.getElementById("total");
+const grid =
+document.getElementById("grid");
 
-const grid = document.getElementById("grid");
+const misCompras =
+document.getElementById("misCompras");
 
-const misCompras = document.getElementById("misCompras");
+const btnLogin =
+document.getElementById("btnLogin");
 
-const btnLogin = document.getElementById("btnLogin");
-
-const adminBtn = document.getElementById("adminBtn");
+const adminBtn =
+document.getElementById("adminBtn");
 
 
 
@@ -67,13 +79,14 @@ let intervaloQR;
 
 
 /* ========================================
-   CREAR ADMIN SI NO EXISTE
+   CREAR ADMIN
 ======================================== */
 
 function inicializarAdmin(){
 
     let users =
-    JSON.parse(localStorage.getItem("users")) || [];
+    JSON.parse(localStorage.getItem("users"))
+    || [];
 
 
     let existeAdmin =
@@ -120,6 +133,8 @@ function mostrarHome(){
 
     eventoPage.style.display = "none";
 
+    adminPage.style.display = "none";
+
     window.scrollTo(0,0);
 }
 
@@ -130,6 +145,8 @@ function abrirEvento(){
 
     eventoPage.style.display = "block";
 
+    adminPage.style.display = "none";
+
     window.scrollTo(0,0);
 }
 
@@ -137,6 +154,8 @@ function abrirEvento(){
 function volverHome(){
 
     eventoPage.style.display = "none";
+
+    adminPage.style.display = "none";
 
     homePage.style.display = "block";
 
@@ -146,7 +165,7 @@ function volverHome(){
 
 
 /* ========================================
-   LOGIN MODAL
+   LOGIN
 ======================================== */
 
 function abrirLogin(){
@@ -163,7 +182,7 @@ function cerrarLogin(){
 
 
 /* ========================================
-   CAMBIAR LOGIN / REGISTER
+   TOGGLE LOGIN/REGISTER
 ======================================== */
 
 function toggleAuthMode(){
@@ -218,7 +237,7 @@ function toggleAuthMode(){
 
 
 /* ========================================
-   MOSTRAR PASSWORD
+   PASSWORD
 ======================================== */
 
 function togglePassword(){
@@ -284,7 +303,7 @@ function registrarUsuario(){
     }
 
 
-    let nuevoUsuario = {
+    users.push({
 
         name:name,
 
@@ -295,10 +314,7 @@ function registrarUsuario(){
         role:"user",
 
         compras:[]
-    };
-
-
-    users.push(nuevoUsuario);
+    });
 
 
     localStorage.setItem(
@@ -380,7 +396,7 @@ function iniciarSesion(){
 
 
 /* ========================================
-   CERRAR SESIÓN
+   LOGOUT
 ======================================== */
 
 function cerrarSesion(){
@@ -467,21 +483,21 @@ function actualizarUsuario(){
 
 function abrirAdminPanel(){
 
-    adminModal.style.display = "flex";
+    homePage.style.display = "none";
+
+    eventoPage.style.display = "none";
+
+    adminPage.style.display = "block";
 
     renderAdminCompras();
-}
 
-
-function cerrarAdminPanel(){
-
-    adminModal.style.display = "none";
+    window.scrollTo(0,0);
 }
 
 
 function renderAdminCompras(){
 
-    adminCompras.innerHTML = "";
+    adminTableBody.innerHTML = "";
 
 
     let users =
@@ -493,54 +509,21 @@ function renderAdminCompras(){
 
         user.compras.forEach(compra => {
 
-            adminCompras.innerHTML += `
+            adminTableBody.innerHTML += `
 
-            <div class="adminCompra">
+            <tr>
 
-                <p>
+                <td>${user.name}</td>
 
-                    <b>Usuario:</b>
-                    ${user.name}
+                <td>${user.email}</td>
 
-                </p>
+                <td>$${compra.total.toLocaleString()}</td>
 
-                <br>
+                <td>${compra.metodo}</td>
 
-                <p>
+                <td>${compra.codigo}</td>
 
-                    <b>Correo:</b>
-                    ${user.email}
-
-                </p>
-
-                <br>
-
-                <p>
-
-                    <b>Total:</b>
-                    $${compra.total.toLocaleString()}
-
-                </p>
-
-                <br>
-
-                <p>
-
-                    <b>Método:</b>
-                    ${compra.metodo}
-
-                </p>
-
-                <br>
-
-                <p>
-
-                    <b>Código:</b>
-                    ${compra.codigo}
-
-                </p>
-
-            </div>
+            </tr>
 
             `;
         });
@@ -626,7 +609,7 @@ function buscarEventos(){
 
 
 /* ========================================
-   MAPA GENERAL
+   MAPA
 ======================================== */
 
 for(let fila = 1; fila <= 18; fila++){
@@ -874,19 +857,10 @@ function generarCodigoDinamico(){
     let tiempo =
     Math.floor(Date.now() / (1000 * 60));
 
-
     let random =
     Math.floor(Math.random() * 999999);
 
-
-    return `
-
-ONTICKET-
-${currentUser.name}
--${random}
--${tiempo}
-
-    `;
+    return `ONTICKET-${currentUser.name}-${random}-${tiempo}`;
 }
 
 
@@ -941,12 +915,8 @@ function actualizarTimer(){
     tiempoRestante % 60;
 
 
-    timerText.innerText = `
-
-${String(minutos).padStart(2,"0")}:
-${String(segundos).padStart(2,"0")}
-
-    `;
+    timerText.innerText =
+    `${String(minutos).padStart(2,"0")}:${String(segundos).padStart(2,"0")}`;
 }
 
 
