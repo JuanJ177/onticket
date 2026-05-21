@@ -11,12 +11,10 @@
 
     <link rel="stylesheet" href="style.css">
 
-    <!-- ICONOS -->
     <link
         rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
     >
-
 
 </head>
 
@@ -160,9 +158,7 @@
 
             <div class="themeToggle" onclick="toggleTheme()">
 
-                <span id="sunIcon">☀️</span>
-
-                <span id="moonIcon">🌙</span>
+                ☀️ 🌙
 
             </div>
 
@@ -474,19 +470,6 @@
 
         </nav>
 
-
-        <div class="headerRight">
-
-            <div class="themeToggle" onclick="toggleTheme()">
-
-                <span id="sunIcon">☀️</span>
-
-                <span id="moonIcon">🌙</span>
-
-            </div>
-
-        </div>
-
     </header>
 
 
@@ -593,8 +576,6 @@
 
 
 
-            <!-- PALCO DIAMANTE -->
-
             <div class="vipSection diamondSection">
 
                 <h3>
@@ -632,8 +613,6 @@
             </div>
 
 
-
-            <!-- PALCO VIP -->
 
             <div class="vipSection vipSectionOrange">
 
@@ -673,8 +652,6 @@
 
 
 
-            <!-- GENERAL -->
-
             <div class="generalLabel">
 
                 GENERAL - $90.000
@@ -682,14 +659,10 @@
             </div>
 
 
-            <!-- MAPA -->
-
             <div
                 class="seatMap"
                 id="grid"
-            >
-
-            </div>
+            ></div>
 
         </div>
 
@@ -754,7 +727,7 @@
 
 
 <!-- ========================================
-     ADMIN PAGE
+     ADMIN
 ======================================== -->
 
 <section
@@ -763,69 +736,30 @@
     style="display:none;"
 >
 
-    <header class="header">
-
-        <div class="logoContainer">
-
-            <img
-                src="img/logo.png"
-                class="logoImg"
-            >
-
-        </div>
-
-
-        <nav class="navbar">
-
-            <a href="#" onclick="volverHome()">
-
-                <i class="fa-solid fa-house"></i>
-
-                Inicio
-
-            </a>
-
-
-            <a href="#" class="activeNav">
-
-                <i class="fa-solid fa-lock"></i>
-
-                Panel Admin
-
-            </a>
-
-        </nav>
-
-    </header>
-
-
-
     <div class="adminContainer">
 
         <h1>
 
-            Panel Administrativo OnTicket
+            Panel Administrativo
 
         </h1>
 
         <p class="adminSubtitle">
 
-            Gestión y monitoreo de compras realizadas por usuarios
+            Últimas compras realizadas
 
         </p>
-
 
         <div class="adminSearch">
 
             <input
                 type="text"
                 id="searchCompra"
-                placeholder="Buscar compra por código..."
+                placeholder="Buscar por ID..."
                 onkeyup="buscarCompraAdmin()"
             >
 
         </div>
-
 
         <table class="adminTable">
 
@@ -834,22 +768,16 @@
                 <tr>
 
                     <th>Usuario</th>
-
                     <th>Correo</th>
-
                     <th>Total</th>
-
                     <th>Método</th>
-
                     <th>Código</th>
 
                 </tr>
 
             </thead>
 
-            <tbody id="adminTableBody">
-
-            </tbody>
+            <tbody id="adminTableBody"></tbody>
 
         </table>
 
@@ -922,7 +850,7 @@
                 id="rememberUser"
             >
 
-            <label for="rememberUser">
+            <label>
 
                 Recordar sesión
 
@@ -980,37 +908,29 @@
 
         </h2>
 
-        <div class="ticketCard">
+        <br>
 
-            <p>
+        <p>
 
-                <i class="fa-brands fa-whatsapp"></i>
+            📞 +57 320 555 7788
 
-                WhatsApp:
-                +57 320 555 7788
+        </p>
 
-            </p>
+        <br>
 
-            <br>
+        <p>
 
-            <p>
+            ✉ soporte@onticket.com
 
-                <i class="fa-regular fa-envelope"></i>
+        </p>
 
-                soporte@onticket.com
+        <br>
 
-            </p>
+        <p>
 
-            <br>
+            Atención 24/7
 
-            <p>
-
-                Atención:
-                Lunes a Domingo 24/7
-
-            </p>
-
-        </div>
+        </p>
 
     </div>
 
@@ -1076,7 +996,7 @@
 
                 <img src="img/visa.png">
 
-                <p>Tarjeta</p>
+                <p>Visa</p>
 
             </div>
 
@@ -1130,19 +1050,37 @@
 
         <div class="ticketCard">
 
-            <h3>
-
-                ONTICKET
-
-            </h3>
-
             <div id="ticketTexto"></div>
 
             <div id="qrcode"></div>
 
-            <div id="qrTimer">
 
-              05:00
+            <div class="qrTimerContainer">
+
+                <svg class="progressRing" width="120" height="120">
+
+                    <circle
+                        class="progressBg"
+                        cx="60"
+                        cy="60"
+                        r="52"
+                    ></circle>
+
+                    <circle
+                        class="progressCircle"
+                        cx="60"
+                        cy="60"
+                        r="52"
+                    ></circle>
+
+                </svg>
+
+
+                <div id="qrTimer">
+
+                    05:00
+
+                </div>
 
             </div>
 
