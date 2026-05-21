@@ -1231,13 +1231,33 @@ body:not(.dark) #moonIcon{
 
 #qrcode{
 
-    margin-top:20px;
+    width:100%;
+
+    min-height:220px;
+
+    margin-top:25px;
 
     display:flex;
 
+    align-items:center;
+
     justify-content:center;
+
+    background:white;
+
+    border-radius:18px;
+
+    padding:20px;
 }
 
+#qrcode canvas{
+
+    display:block !important;
+
+    width:180px !important;
+
+    height:180px !important;
+}
 
 #qrTimer{
 
