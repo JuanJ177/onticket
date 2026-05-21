@@ -27,9 +27,6 @@ document.getElementById("searchInput");
 const metodoSeleccionado =
 document.getElementById("metodoSeleccionado");
 
-const timerText =
-document.getElementById("qrTimer");
-
 const ticketTexto =
 document.getElementById("ticketTexto");
 
@@ -924,31 +921,11 @@ function iniciarTimerQR(){
 
             clearInterval(intervaloQR);
 
-
-            // GENERAR NUEVO CÓDIGO
             let nuevoCodigo =
             generarCodigoDinamico();
 
-
-            // ACTUALIZAR QR
             actualizarQR(nuevoCodigo);
 
-
-            // ACTUALIZAR TEXTO DEL TICKET
-            let codigoHTML =
-            document.querySelector("#ticketTexto");
-
-
-            codigoHTML.innerHTML =
-            codigoHTML.innerHTML.replace(
-
-                /ONTICKET-\d+-\d+/,
-
-                nuevoCodigo
-            );
-
-
-            // REINICIAR TIMER
             iniciarTimerQR();
         }
 
@@ -975,7 +952,7 @@ function actualizarTimer(){
     tiempoRestante % 60;
 
 
-    timerElement.innerHTML =
+    timerElement.innerText =
     `${String(minutos).padStart(2,"0")}:${String(segundos).padStart(2,"0")}`;
 
 
@@ -997,6 +974,7 @@ function actualizarTimer(){
         circumference * (1 - progress);
     }
 }
+
 
 
 /* ========================================
