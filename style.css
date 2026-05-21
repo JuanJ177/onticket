@@ -6,18 +6,6 @@ html{
 
 
 /* ========================================
-   SCROLL FIX
-======================================== */
-
-#eventos,
-#categorias{
-
-    scroll-margin-top:120px;
-}
-
-
-
-/* ========================================
    GENERAL
 ======================================== */
 
@@ -47,27 +35,6 @@ body{
 
 
 /* ========================================
-   VIDEO LANDING
-======================================== */
-
-.bgVideo{
-
-    position:absolute;
-
-    inset:0;
-
-    width:100%;
-
-    height:100%;
-
-    object-fit:cover;
-
-    z-index:0;
-}
-
-
-
-/* ========================================
    LANDING
 ======================================== */
 
@@ -87,6 +54,20 @@ body{
 }
 
 
+.bgVideo{
+
+    position:absolute;
+
+    inset:0;
+
+    width:100%;
+
+    height:100%;
+
+    object-fit:cover;
+}
+
+
 .landingOverlay{
 
     position:absolute;
@@ -96,8 +77,6 @@ body{
     background:rgba(0,0,0,0.65);
 
     backdrop-filter:blur(3px);
-
-    z-index:1;
 }
 
 
@@ -110,8 +89,6 @@ body{
     text-align:center;
 
     color:white;
-
-    animation:fadeUp 1s ease;
 }
 
 
@@ -119,21 +96,17 @@ body{
 
     width:240px;
 
-    margin-bottom:30px;
+    margin-bottom:25px;
 
-    object-fit:contain;
-
-    filter:drop-shadow(0 5px 20px rgba(0,0,0,0.35));
+    filter:drop-shadow(0 10px 25px rgba(0,0,0,0.4));
 }
 
 
 .landingContent h1{
 
-    font-size:72px;
+    font-size:70px;
 
     margin-bottom:15px;
-
-    letter-spacing:3px;
 }
 
 
@@ -142,8 +115,6 @@ body{
     font-size:22px;
 
     margin-bottom:35px;
-
-    opacity:0.9;
 }
 
 
@@ -155,9 +126,9 @@ body{
 
     border:none;
 
-    padding:18px 42px;
+    padding:18px 45px;
 
-    border-radius:16px;
+    border-radius:18px;
 
     font-size:18px;
 
@@ -174,24 +145,6 @@ body{
     transform:translateY(-4px);
 
     box-shadow:0 12px 25px rgba(255,102,0,0.4);
-}
-
-
-@keyframes fadeUp{
-
-    from{
-
-        opacity:0;
-
-        transform:translateY(30px);
-    }
-
-    to{
-
-        opacity:1;
-
-        transform:translateY(0);
-    }
 }
 
 
@@ -227,18 +180,15 @@ body{
 
     padding:0 40px;
 
-    border-bottom:1px solid #ddd;
-
     position:sticky;
 
     top:0;
 
     z-index:100;
+
+    border-bottom:1px solid #ddd;
 }
 
-
-
-/* LOGO */
 
 .logoContainer{
 
@@ -255,9 +205,6 @@ body{
     object-fit:contain;
 }
 
-
-
-/* NAVBAR */
 
 .navbar{
 
@@ -281,8 +228,6 @@ body{
 
     gap:8px;
 
-    padding-bottom:10px;
-
     transition:0.3s;
 }
 
@@ -296,13 +241,8 @@ body{
 .activeNav{
 
     color:#ff6600 !important;
-
-    border-bottom:3px solid #ff6600;
 }
 
-
-
-/* HEADER RIGHT */
 
 .headerRight{
 
@@ -310,13 +250,13 @@ body{
 
     align-items:center;
 
-    gap:18px;
+    gap:15px;
 }
 
 
 
 /* ========================================
-   DARK MODE
+   DARK MODE BUTTON
 ======================================== */
 
 .themeToggle{
@@ -329,7 +269,7 @@ body{
 
     background:#f1f1f1;
 
-    padding:8px 12px;
+    padding:8px 14px;
 
     border-radius:20px;
 
@@ -349,30 +289,6 @@ body{
 #moonIcon{
 
     font-size:18px;
-
-    transition:0.3s;
-}
-
-
-body:not(.dark) #sunIcon{
-
-    opacity:1;
-}
-
-body:not(.dark) #moonIcon{
-
-    opacity:0.3;
-}
-
-
-.dark #sunIcon{
-
-    opacity:0.3;
-}
-
-.dark #moonIcon{
-
-    opacity:1;
 }
 
 
@@ -389,7 +305,7 @@ body:not(.dark) #moonIcon{
 
     padding:12px 20px;
 
-    border-radius:10px;
+    border-radius:12px;
 
     display:flex;
 
@@ -397,9 +313,9 @@ body:not(.dark) #moonIcon{
 
     gap:10px;
 
-    cursor:pointer;
-
     font-weight:bold;
+
+    cursor:pointer;
 
     transition:0.3s;
 }
@@ -448,8 +364,6 @@ body:not(.dark) #moonIcon{
     transform:translateY(-50%);
 
     cursor:pointer;
-
-    color:#777;
 }
 
 
@@ -462,8 +376,6 @@ body:not(.dark) #moonIcon{
     gap:10px;
 
     margin-top:18px;
-
-    font-size:14px;
 }
 
 
@@ -516,7 +428,7 @@ body:not(.dark) #moonIcon{
 
 .heroText h1{
 
-    font-size:56px;
+    font-size:58px;
 
     margin-bottom:15px;
 }
@@ -565,7 +477,7 @@ body:not(.dark) #moonIcon{
 
 
 /* ========================================
-   CATEGORÍAS
+   CATEGORIES
 ======================================== */
 
 .categories{
@@ -576,9 +488,9 @@ body:not(.dark) #moonIcon{
 
     gap:25px;
 
-    margin-bottom:50px;
-
     flex-wrap:wrap;
+
+    margin-bottom:50px;
 }
 
 
@@ -600,7 +512,7 @@ body:not(.dark) #moonIcon{
 
     justify-content:center;
 
-    gap:15px;
+    gap:12px;
 
     box-shadow:0 5px 15px rgba(0,0,0,0.08);
 
@@ -618,7 +530,7 @@ body:not(.dark) #moonIcon{
 
 .categoryCard i{
 
-    font-size:34px;
+    font-size:35px;
 
     color:#ff6600;
 }
@@ -632,7 +544,7 @@ body:not(.dark) #moonIcon{
 
 
 /* ========================================
-   EVENTOS
+   EVENTS
 ======================================== */
 
 .eventsSection{
@@ -722,11 +634,11 @@ body:not(.dark) #moonIcon{
 
     padding:35px;
 
-    box-shadow:0 5px 15px rgba(0,0,0,0.08);
-
     flex-wrap:wrap;
 
     gap:25px;
+
+    box-shadow:0 5px 15px rgba(0,0,0,0.08);
 }
 
 
@@ -825,11 +737,16 @@ body:not(.dark) #moonIcon{
 
     width:100%;
 
-    margin-top:25px;
+    margin-top:20px;
 
     border-radius:18px;
 }
 
+
+
+/* ========================================
+   CENTER PANEL
+======================================== */
 
 .centerPanel{
 
@@ -843,9 +760,9 @@ body:not(.dark) #moonIcon{
 
     font-size:34px;
 
-    font-weight:bold;
-
     margin-bottom:30px;
+
+    font-weight:bold;
 }
 
 
@@ -882,6 +799,11 @@ body:not(.dark) #moonIcon{
     border-radius:0 0 35px 35px;
 }
 
+
+
+/* ========================================
+   VIP
+======================================== */
 
 .vipSection{
 
@@ -961,6 +883,11 @@ body:not(.dark) #moonIcon{
 }
 
 
+
+/* ========================================
+   GENERAL SEATS
+======================================== */
+
 .generalLabel{
 
     width:270px;
@@ -1017,7 +944,7 @@ body:not(.dark) #moonIcon{
 
 .ocupado{
 
-    background:#9e9e9e;
+    background:#999;
 }
 
 
@@ -1122,7 +1049,7 @@ body:not(.dark) #moonIcon{
 
     width:420px;
 
-    max-height:80vh;
+    max-height:85vh;
 
     overflow-y:auto;
 
@@ -1242,32 +1169,89 @@ body:not(.dark) #moonIcon{
     align-items:center;
 
     justify-content:center;
+}
+
+
+#qrImage{
+
+    width:220px;
+
+    height:220px;
 
     background:white;
 
-    border-radius:18px;
-
-    padding:20px;
+    border-radius:14px;
 }
 
-#qrcode canvas{
 
-    display:block !important;
 
-    width:180px !important;
+/* ========================================
+   QR TIMER
+======================================== */
 
-    height:180px !important;
+.qrTimerContainer{
+
+    position:relative;
+
+    width:120px;
+
+    height:120px;
+
+    margin:25px auto 0;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
 }
+
+
+.progressRing{
+
+    position:absolute;
+
+    transform:rotate(-90deg);
+}
+
+
+.progressBg{
+
+    fill:none;
+
+    stroke:#ddd;
+
+    stroke-width:8;
+}
+
+
+.progressCircle{
+
+    fill:none;
+
+    stroke:#ff6600;
+
+    stroke-width:8;
+
+    stroke-linecap:round;
+
+    stroke-dasharray:326;
+
+    stroke-dashoffset:0;
+
+    transition:stroke-dashoffset 1s linear;
+}
+
 
 #qrTimer{
 
-    margin-top:15px;
-
-    text-align:center;
-
-    color:#ff6600;
+    position:absolute;
 
     font-weight:bold;
+
+    font-size:20px;
+
+    color:#ff6600;
 }
 
 
@@ -1277,6 +1261,8 @@ body:not(.dark) #moonIcon{
 ======================================== */
 
 .adminPage{
+
+    display:none;
 
     min-height:100vh;
 }
@@ -1411,6 +1397,13 @@ body:not(.dark) #moonIcon{
 .dark .seatItem{
 
     background:#2b2b2b;
+}
+
+
+.dark .eventCardInfo p,
+.dark .adminSubtitle{
+
+    color:#ccc;
 }
 
 
