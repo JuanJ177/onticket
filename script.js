@@ -28,7 +28,7 @@ const metodoSeleccionado =
 document.getElementById("metodoSeleccionado");
 
 const timerText =
-document.getElementById("timerText");
+document.getElementById("qrTimer");
 
 const ticketTexto =
 document.getElementById("ticketTexto");
