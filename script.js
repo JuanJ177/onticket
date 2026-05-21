@@ -947,9 +947,16 @@ function actualizarQR(codigo){
     qrcode.innerHTML = "";
 
 
+    const qrDiv =
+    document.createElement("div");
+
+
+    qrcode.appendChild(qrDiv);
+
+
     setTimeout(()=>{
 
-        new QRCode(qrcode,{
+        new QRCode(qrDiv,{
 
             text: codigo,
 
@@ -967,7 +974,6 @@ function actualizarQR(codigo){
 
     },100);
 }
-
 
 
 /* ========================================
