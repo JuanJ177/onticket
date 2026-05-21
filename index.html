@@ -806,6 +806,97 @@
 
 
 <!-- ========================================
+     ADMIN PAGE
+======================================== -->
+
+<section
+    class="adminPage"
+    id="adminPage"
+    style="display:none;"
+>
+
+    <header class="header">
+
+        <div class="logoContainer">
+
+            <img
+                src="img/logo.png"
+                class="logoImg"
+            >
+
+        </div>
+
+
+        <nav class="navbar">
+
+            <a href="#" onclick="volverHome()">
+
+                <i class="fa-solid fa-house"></i>
+
+                Inicio
+
+            </a>
+
+
+            <a href="#" class="activeNav">
+
+                <i class="fa-solid fa-lock"></i>
+
+                Panel Admin
+
+            </a>
+
+        </nav>
+
+    </header>
+
+
+
+    <div class="adminContainer">
+
+        <h1>
+
+            Últimas compras realizadas
+
+        </h1>
+
+
+        <table class="adminTable">
+
+            <thead>
+
+                <tr>
+
+                    <th>Usuario</th>
+
+                    <th>Correo</th>
+
+                    <th>Total</th>
+
+                    <th>Método</th>
+
+                    <th>Código</th>
+
+                </tr>
+
+            </thead>
+
+
+            <tbody id="adminTableBody">
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</section>
+
+
+
+
+
+<!-- ========================================
      REGISTER / LOGIN
 ======================================== -->
 
@@ -939,44 +1030,6 @@
 
 
 <!-- ========================================
-     ADMIN PANEL
-======================================== -->
-
-<div class="modal" id="adminModal" style="display:none;">
-
-    <div class="ticketModal">
-
-
-        <span
-            class="closeModal"
-            onclick="cerrarAdminPanel()"
-        >
-
-            ✖
-
-        </span>
-
-
-        <h2>
-
-            Panel Administrador
-
-        </h2>
-
-
-        <div id="adminCompras">
-
-        </div>
-
-    </div>
-
-</div>
-
-
-
-
-
-<!-- ========================================
      AYUDA
 ======================================== -->
 
@@ -1026,14 +1079,6 @@
 
                 Atención:
                 Lunes a Domingo 24/7
-
-            </p>
-
-            <br>
-
-            <p>
-
-                Todas las compras están protegidas bajo términos y condiciones OnTicket.
 
             </p>
 
