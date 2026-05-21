@@ -924,11 +924,31 @@ function iniciarTimerQR(){
 
             clearInterval(intervaloQR);
 
+
+            // GENERAR NUEVO CÓDIGO
             let nuevoCodigo =
             generarCodigoDinamico();
 
+
+            // ACTUALIZAR QR
             actualizarQR(nuevoCodigo);
 
+
+            // ACTUALIZAR TEXTO DEL TICKET
+            let codigoHTML =
+            document.querySelector("#ticketTexto");
+
+
+            codigoHTML.innerHTML =
+            codigoHTML.innerHTML.replace(
+
+                /ONTICKET-\d+-\d+/,
+
+                nuevoCodigo
+            );
+
+
+            // REINICIAR TIMER
             iniciarTimerQR();
         }
 
