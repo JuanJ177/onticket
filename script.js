@@ -182,7 +182,7 @@ function cerrarLogin(){
 
 
 /* ========================================
-   TOGGLE LOGIN/REGISTER
+   TOGGLE LOGIN / REGISTER
 ======================================== */
 
 function toggleAuthMode(){
@@ -214,7 +214,6 @@ function toggleAuthMode(){
 
         switchBtn.innerText =
         "Ya tengo cuenta";
-
 
     }else{
 
@@ -390,7 +389,7 @@ function iniciarSesion(){
 
     renderCompras();
 
-    loginModal.style.display = "none";
+    cerrarLogin();
 }
 
 
@@ -455,7 +454,6 @@ function actualizarUsuario(){
         if(currentUser.role === "admin"){
 
             adminBtn.style.display = "flex";
-
         }
 
     }else{
@@ -511,7 +509,7 @@ function renderAdminCompras(){
 
             adminTableBody.innerHTML += `
 
-            <tr>
+            <tr class="adminRow">
 
                 <td>${user.name}</td>
 
@@ -527,6 +525,35 @@ function renderAdminCompras(){
 
             `;
         });
+    });
+}
+
+
+function buscarCompraAdmin(){
+
+    let input =
+    document.getElementById("searchCompra")
+    .value
+    .toLowerCase();
+
+    let filas =
+    document.querySelectorAll(".adminRow");
+
+
+    filas.forEach(fila => {
+
+        let texto =
+        fila.innerText.toLowerCase();
+
+
+        if(texto.includes(input)){
+
+            fila.style.display = "";
+
+        }else{
+
+            fila.style.display = "none";
+        }
     });
 }
 
@@ -577,7 +604,7 @@ if(localStorage.getItem("theme") === "dark"){
 
 
 /* ========================================
-   BUSCADOR
+   BUSCADOR EVENTOS
 ======================================== */
 
 function buscarEventos(){
@@ -609,7 +636,7 @@ function buscarEventos(){
 
 
 /* ========================================
-   MAPA
+   MAPA GENERAL
 ======================================== */
 
 for(let fila = 1; fila <= 18; fila++){
@@ -621,7 +648,6 @@ for(let fila = 1; fila <= 18; fila++){
 
 
     for(let asiento = 1; asiento <= 28; asiento++){
-
 
         if(asiento === 15){
 
@@ -648,7 +674,6 @@ for(let fila = 1; fila <= 18; fila++){
 
         seat.onclick = () => {
 
-
             if(seat.classList.contains("ocupado")){
 
                 return;
@@ -663,17 +688,14 @@ for(let fila = 1; fila <= 18; fila++){
 
                 seat.classList.remove("selected");
 
-
                 selectedSeats =
                 selectedSeats.filter(
                     s => s !== id
                 );
 
-
                 total -= 90000;
 
                 entradas--;
-
 
             }else{
 
@@ -708,9 +730,7 @@ document.querySelectorAll(".vipSeat");
 
 vipSeats.forEach(seat => {
 
-
     seat.onclick = () => {
-
 
         let nombre = seat.innerText;
 
@@ -727,17 +747,14 @@ vipSeats.forEach(seat => {
 
             seat.classList.remove("selected");
 
-
             selectedSeats =
             selectedSeats.filter(
                 s => s !== nombre
             );
 
-
             total -= precio;
 
             entradas--;
-
 
         }else{
 
@@ -930,17 +947,25 @@ function actualizarQR(codigo){
     qrcode.innerHTML = "";
 
 
-    new QRCode(
-        document.getElementById("qrcode"),
-        {
+    setTimeout(()=>{
+
+        new QRCode(qrcode,{
 
             text: codigo,
 
-            width:120,
+            width:180,
 
-            height:120
-        }
-    );
+            height:180,
+
+            colorDark:"#000000",
+
+            colorLight:"#ffffff",
+
+            correctLevel: QRCode.CorrectLevel.H
+
+        });
+
+    },100);
 }
 
 
@@ -950,7 +975,6 @@ function actualizarQR(codigo){
 ======================================== */
 
 function confirmarCompra(){
-
 
     if(metodoPago === ""){
 
@@ -988,14 +1012,12 @@ function confirmarCompra(){
 
     users = users.map(user => {
 
-
         if(user.email === currentUser.email){
 
             user.compras.push(compra);
 
             currentUser = user;
         }
-
 
         return user;
     });
@@ -1092,6 +1114,8 @@ function confirmarCompra(){
 function cerrarTicket(){
 
     ticketModal.style.display = "none";
+
+    clearInterval(intervaloQR);
 }
 
 
@@ -1104,6 +1128,15 @@ function descargarQR(){
 
     let canvas =
     qrcode.querySelector("canvas");
+
+
+    if(!canvas){
+
+        alert("QR aún cargando");
+
+        return;
+    }
+
 
     let link =
     document.createElement("a");
@@ -1255,14 +1288,12 @@ function eliminarCompra(index){
 
     users = users.map(user => {
 
-
         if(user.email === currentUser.email){
 
             user.compras.splice(index,1);
 
             currentUser = user;
         }
-
 
         return user;
     });
