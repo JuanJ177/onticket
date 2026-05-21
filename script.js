@@ -958,6 +958,16 @@ function iniciarTimerQR(){
 
 function actualizarTimer(){
 
+    const timerElement =
+    document.getElementById("qrTimer");
+
+
+    if(!timerElement){
+
+        return;
+    }
+
+
     let minutos =
     Math.floor(tiempoRestante / 60);
 
@@ -965,7 +975,7 @@ function actualizarTimer(){
     tiempoRestante % 60;
 
 
-    timerText.innerText =
+    timerElement.innerHTML =
     `${String(minutos).padStart(2,"0")}:${String(segundos).padStart(2,"0")}`;
 
 
@@ -973,19 +983,20 @@ function actualizarTimer(){
     document.querySelector(".progressCircle");
 
 
-    const totalTiempo = 300;
+    if(progressCircle){
 
-    const progress =
-    tiempoRestante / totalTiempo;
+        const totalTiempo = 300;
+
+        const progress =
+        tiempoRestante / totalTiempo;
+
+        const circumference = 326;
 
 
-    const circumference = 326;
-
-
-    progressCircle.style.strokeDashoffset =
-    circumference * (1 - progress);
+        progressCircle.style.strokeDashoffset =
+        circumference * (1 - progress);
+    }
 }
-
 
 
 /* ========================================
