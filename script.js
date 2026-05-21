@@ -16,6 +16,10 @@ const ticketModal = document.getElementById("ticketModal");
 
 const loginModal = document.getElementById("loginModal");
 
+const adminModal = document.getElementById("adminModal");
+
+const adminCompras = document.getElementById("adminCompras");
+
 const searchInput = document.getElementById("searchInput");
 
 const metodoSeleccionado = document.getElementById("metodoSeleccionado");
@@ -35,6 +39,72 @@ const grid = document.getElementById("grid");
 const misCompras = document.getElementById("misCompras");
 
 const btnLogin = document.getElementById("btnLogin");
+
+const adminBtn = document.getElementById("adminBtn");
+
+
+
+/* ========================================
+   VARIABLES
+======================================== */
+
+let total = 0;
+
+let entradas = 0;
+
+let metodoPago = "";
+
+let selectedSeats = [];
+
+let authMode = "login";
+
+let currentUser = null;
+
+let tiempoRestante = 60;
+
+let intervaloQR;
+
+
+
+/* ========================================
+   CREAR ADMIN SI NO EXISTE
+======================================== */
+
+function inicializarAdmin(){
+
+    let users =
+    JSON.parse(localStorage.getItem("users")) || [];
+
+
+    let existeAdmin =
+    users.find(u => u.role === "admin");
+
+
+    if(!existeAdmin){
+
+        users.push({
+
+            name:"Administrador",
+
+            email:"admin@onticket.com",
+
+            password:"123456",
+
+            role:"admin",
+
+            compras:[]
+        });
+
+
+        localStorage.setItem(
+            "users",
+            JSON.stringify(users)
+        );
+    }
+}
+
+
+inicializarAdmin();
 
 
 
@@ -76,7 +146,7 @@ function volverHome(){
 
 
 /* ========================================
-   LOGIN
+   LOGIN MODAL
 ======================================== */
 
 function abrirLogin(){
@@ -92,11 +162,69 @@ function cerrarLogin(){
 
 
 
-/* MOSTRAR / OCULTAR PASSWORD */
+/* ========================================
+   CAMBIAR LOGIN / REGISTER
+======================================== */
+
+function toggleAuthMode(){
+
+    const title =
+    document.getElementById("authTitle");
+
+    const registerName =
+    document.getElementById("registerName");
+
+    const actionBtn =
+    document.getElementById("loginActionBtn");
+
+    const switchBtn =
+    document.querySelector(".switchAuthBtn");
+
+
+    if(authMode === "login"){
+
+        authMode = "register";
+
+        title.innerText = "Crear Cuenta";
+
+        registerName.style.display = "block";
+
+        actionBtn.innerText = "CREAR CUENTA";
+
+        actionBtn.onclick = registrarUsuario;
+
+        switchBtn.innerText =
+        "Ya tengo cuenta";
+
+
+    }else{
+
+        authMode = "login";
+
+        title.innerText = "Iniciar Sesión";
+
+        registerName.style.display = "none";
+
+        actionBtn.innerText =
+        "INICIAR SESIÓN";
+
+        actionBtn.onclick = iniciarSesion;
+
+        switchBtn.innerText =
+        "Crear cuenta";
+    }
+}
+
+
+
+/* ========================================
+   MOSTRAR PASSWORD
+======================================== */
 
 function togglePassword(){
 
-    const passwordInput = document.getElementById("passwordInput");
+    const passwordInput =
+    document.getElementById("passwordInput");
 
 
     if(passwordInput.type === "password"){
@@ -111,18 +239,27 @@ function togglePassword(){
 
 
 
-/* INICIAR SESIÓN */
+/* ========================================
+   REGISTRO
+======================================== */
 
-function iniciarSesion(){
+function registrarUsuario(){
 
-    let email = document.getElementById("emailInput").value;
+    let name =
+    document.getElementById("registerName").value;
 
-    let password = document.getElementById("passwordInput").value;
+    let email =
+    document.getElementById("emailInput").value;
 
-    let remember = document.getElementById("rememberUser").checked;
+    let password =
+    document.getElementById("passwordInput").value;
 
 
-    if(email === "" || password === ""){
+    if(
+        name === "" ||
+        email === "" ||
+        password === ""
+    ){
 
         alert("Completa todos los campos");
 
@@ -130,23 +267,104 @@ function iniciarSesion(){
     }
 
 
-    let usuario = {
+    let users =
+    JSON.parse(localStorage.getItem("users"))
+    || [];
 
-        email: email
+
+    let existe =
+    users.find(u => u.email === email);
+
+
+    if(existe){
+
+        alert("Ese correo ya existe");
+
+        return;
+    }
+
+
+    let nuevoUsuario = {
+
+        name:name,
+
+        email:email,
+
+        password:password,
+
+        role:"user",
+
+        compras:[]
     };
+
+
+    users.push(nuevoUsuario);
+
+
+    localStorage.setItem(
+        "users",
+        JSON.stringify(users)
+    );
+
+
+    alert("Cuenta creada correctamente");
+
+    toggleAuthMode();
+}
+
+
+
+/* ========================================
+   LOGIN
+======================================== */
+
+function iniciarSesion(){
+
+    let email =
+    document.getElementById("emailInput").value;
+
+    let password =
+    document.getElementById("passwordInput").value;
+
+    let remember =
+    document.getElementById("rememberUser").checked;
+
+
+    let users =
+    JSON.parse(localStorage.getItem("users"))
+    || [];
+
+
+    let usuario =
+    users.find(
+        u =>
+        u.email === email &&
+        u.password === password
+    );
+
+
+    if(!usuario){
+
+        alert("Correo o contraseña incorrectos");
+
+        return;
+    }
+
+
+    currentUser = usuario;
 
 
     if(remember){
 
         localStorage.setItem(
-            "usuario",
+            "currentUser",
             JSON.stringify(usuario)
         );
 
     }else{
 
         sessionStorage.setItem(
-            "usuario",
+            "currentUser",
             JSON.stringify(usuario)
         );
     }
@@ -154,18 +372,24 @@ function iniciarSesion(){
 
     actualizarUsuario();
 
+    renderCompras();
+
     loginModal.style.display = "none";
 }
 
 
 
-/* CERRAR SESIÓN */
+/* ========================================
+   CERRAR SESIÓN
+======================================== */
 
 function cerrarSesion(){
 
-    localStorage.removeItem("usuario");
+    localStorage.removeItem("currentUser");
 
-    sessionStorage.removeItem("usuario");
+    sessionStorage.removeItem("currentUser");
+
+    currentUser = null;
 
 
     btnLogin.innerHTML = `
@@ -178,30 +402,45 @@ function cerrarSesion(){
 
 
     btnLogin.onclick = abrirLogin;
+
+    adminBtn.style.display = "none";
+
+    misCompras.innerHTML = "";
 }
 
 
 
-/* ACTUALIZAR USUARIO */
+/* ========================================
+   ACTUALIZAR USUARIO
+======================================== */
 
 function actualizarUsuario(){
 
-    let usuario =
-        JSON.parse(localStorage.getItem("usuario")) ||
-        JSON.parse(sessionStorage.getItem("usuario"));
+    currentUser =
+    JSON.parse(localStorage.getItem("currentUser"))
+    ||
+    JSON.parse(sessionStorage.getItem("currentUser"));
 
 
-    if(usuario){
+    if(currentUser){
 
         btnLogin.innerHTML = `
 
             <i class="fa-solid fa-user"></i>
 
-            ${usuario.email}
+            ${currentUser.name}
 
         `;
 
+
         btnLogin.onclick = cerrarSesion;
+
+
+        if(currentUser.role === "admin"){
+
+            adminBtn.style.display = "flex";
+
+        }
 
     }else{
 
@@ -213,8 +452,99 @@ function actualizarUsuario(){
 
         `;
 
+
         btnLogin.onclick = abrirLogin;
+
+        adminBtn.style.display = "none";
     }
+}
+
+
+
+/* ========================================
+   ADMIN PANEL
+======================================== */
+
+function abrirAdminPanel(){
+
+    adminModal.style.display = "flex";
+
+    renderAdminCompras();
+}
+
+
+function cerrarAdminPanel(){
+
+    adminModal.style.display = "none";
+}
+
+
+function renderAdminCompras(){
+
+    adminCompras.innerHTML = "";
+
+
+    let users =
+    JSON.parse(localStorage.getItem("users"))
+    || [];
+
+
+    users.forEach(user => {
+
+        user.compras.forEach(compra => {
+
+            adminCompras.innerHTML += `
+
+            <div class="adminCompra">
+
+                <p>
+
+                    <b>Usuario:</b>
+                    ${user.name}
+
+                </p>
+
+                <br>
+
+                <p>
+
+                    <b>Correo:</b>
+                    ${user.email}
+
+                </p>
+
+                <br>
+
+                <p>
+
+                    <b>Total:</b>
+                    $${compra.total.toLocaleString()}
+
+                </p>
+
+                <br>
+
+                <p>
+
+                    <b>Método:</b>
+                    ${compra.metodo}
+
+                </p>
+
+                <br>
+
+                <p>
+
+                    <b>Código:</b>
+                    ${compra.codigo}
+
+                </p>
+
+            </div>
+
+            `;
+        });
+    });
 }
 
 
@@ -256,9 +586,6 @@ function toggleTheme(){
 }
 
 
-
-/* CARGAR TEMA */
-
 if(localStorage.getItem("theme") === "dark"){
 
     document.body.classList.add("dark");
@@ -272,14 +599,17 @@ if(localStorage.getItem("theme") === "dark"){
 
 function buscarEventos(){
 
-    let input = searchInput.value.toLowerCase();
+    let input =
+    searchInput.value.toLowerCase();
 
-    let cards = document.querySelectorAll(".eventCard");
+    let cards =
+    document.querySelectorAll(".eventCard");
 
 
     cards.forEach(card => {
 
-        let texto = card.innerText.toLowerCase();
+        let texto =
+        card.innerText.toLowerCase();
 
 
         if(texto.includes(input)){
@@ -296,26 +626,13 @@ function buscarEventos(){
 
 
 /* ========================================
-   VARIABLES
-======================================== */
-
-let total = 0;
-
-let entradas = 0;
-
-let metodoPago = "";
-
-let selectedSeats = [];
-
-
-
-/* ========================================
    MAPA GENERAL
 ======================================== */
 
 for(let fila = 1; fila <= 18; fila++){
 
-    let filaDiv = document.createElement("div");
+    let filaDiv =
+    document.createElement("div");
 
     filaDiv.className = "fila";
 
@@ -325,7 +642,8 @@ for(let fila = 1; fila <= 18; fila++){
 
         if(asiento === 15){
 
-            let espacio = document.createElement("div");
+            let espacio =
+            document.createElement("div");
 
             espacio.style.width = "35px";
 
@@ -333,7 +651,8 @@ for(let fila = 1; fila <= 18; fila++){
         }
 
 
-        let seat = document.createElement("div");
+        let seat =
+        document.createElement("div");
 
         seat.className = "seat";
 
@@ -347,10 +666,14 @@ for(let fila = 1; fila <= 18; fila++){
         seat.onclick = () => {
 
 
-            if(seat.classList.contains("ocupado")) return;
+            if(seat.classList.contains("ocupado")){
+
+                return;
+            }
 
 
-            let id = `Fila ${fila} - Asiento ${asiento}`;
+            let id =
+            `Fila ${fila} - Asiento ${asiento}`;
 
 
             if(seat.classList.contains("selected")){
@@ -359,7 +682,9 @@ for(let fila = 1; fila <= 18; fila++){
 
 
                 selectedSeats =
-                selectedSeats.filter(s => s !== id);
+                selectedSeats.filter(
+                    s => s !== id
+                );
 
 
                 total -= 90000;
@@ -371,9 +696,7 @@ for(let fila = 1; fila <= 18; fila++){
 
                 seat.classList.add("selected");
 
-
                 selectedSeats.push(id);
-
 
                 total += 90000;
 
@@ -396,7 +719,8 @@ for(let fila = 1; fila <= 18; fila++){
    PALCOS
 ======================================== */
 
-let vipSeats = document.querySelectorAll(".vipSeat");
+let vipSeats =
+document.querySelectorAll(".vipSeat");
 
 
 vipSeats.forEach(seat => {
@@ -422,7 +746,9 @@ vipSeats.forEach(seat => {
 
 
             selectedSeats =
-            selectedSeats.filter(s => s !== nombre);
+            selectedSeats.filter(
+                s => s !== nombre
+            );
 
 
             total -= precio;
@@ -434,9 +760,7 @@ vipSeats.forEach(seat => {
 
             seat.classList.add("selected");
 
-
             selectedSeats.push(nombre);
-
 
             total += precio;
 
@@ -485,12 +809,21 @@ function renderCompra(){
 
 function abrirPago(){
 
+    if(!currentUser){
+
+        alert("Debes iniciar sesión");
+
+        return;
+    }
+
+
     if(selectedSeats.length <= 0){
 
         alert("Selecciona entradas");
 
         return;
     }
+
 
     pagoModal.style.display = "flex";
 }
@@ -539,9 +872,21 @@ function seleccionarMetodo(nombre){
 function generarCodigoDinamico(){
 
     let tiempo =
-    Math.floor(Date.now() / (1000 * 60 * 30));
+    Math.floor(Date.now() / (1000 * 60));
 
-    return "ONTICKET-" + tiempo;
+
+    let random =
+    Math.floor(Math.random() * 999999);
+
+
+    return `
+
+ONTICKET-
+${currentUser.name}
+-${random}
+-${tiempo}
+
+    `;
 }
 
 
@@ -550,16 +895,11 @@ function generarCodigoDinamico(){
    TIMER QR
 ======================================== */
 
-let tiempoRestante = 1800;
-
-let intervaloQR;
-
-
 function iniciarTimerQR(){
 
     clearInterval(intervaloQR);
 
-    tiempoRestante = 1800;
+    tiempoRestante = 60;
 
     actualizarTimer();
 
@@ -578,7 +918,7 @@ function iniciarTimerQR(){
             let nuevoCodigo =
             generarCodigoDinamico();
 
-            verQR(nuevoCodigo);
+            actualizarQR(nuevoCodigo);
 
             iniciarTimerQR();
         }
@@ -612,6 +952,30 @@ ${String(segundos).padStart(2,"0")}
 
 
 /* ========================================
+   ACTUALIZAR QR
+======================================== */
+
+function actualizarQR(codigo){
+
+    qrcode.innerHTML = "";
+
+
+    new QRCode(
+        document.getElementById("qrcode"),
+        {
+
+            text: codigo,
+
+            width:120,
+
+            height:120
+        }
+    );
+}
+
+
+
+/* ========================================
    CONFIRMAR COMPRA
 ======================================== */
 
@@ -620,7 +984,7 @@ function confirmarCompra(){
 
     if(metodoPago === ""){
 
-        alert("Selecciona un método de pago");
+        alert("Selecciona un método");
 
         return;
     }
@@ -631,32 +995,51 @@ function confirmarCompra(){
     ticketModal.style.display = "flex";
 
 
-    let codigo = generarCodigoDinamico();
+    let codigo =
+    generarCodigoDinamico();
 
 
     let compra = {
 
-        codigo: codigo,
+        codigo:codigo,
 
-        entradas: [...selectedSeats],
+        entradas:[...selectedSeats],
 
-        total: total,
+        total:total,
 
-        metodo: metodoPago
+        metodo:metodoPago
     };
 
 
-    let compras =
-    JSON.parse(localStorage.getItem("compras"))
+    let users =
+    JSON.parse(localStorage.getItem("users"))
     || [];
 
 
-    compras.push(compra);
+    users = users.map(user => {
+
+
+        if(user.email === currentUser.email){
+
+            user.compras.push(compra);
+
+            currentUser = user;
+        }
+
+
+        return user;
+    });
 
 
     localStorage.setItem(
-        "compras",
-        JSON.stringify(compras)
+        "users",
+        JSON.stringify(users)
+    );
+
+
+    localStorage.setItem(
+        "currentUser",
+        JSON.stringify(currentUser)
     );
 
 
@@ -665,70 +1048,69 @@ function confirmarCompra(){
 
     ticketTexto.innerHTML = `
 
-    <p><b>Evento:</b> Andrés Cepeda Tour 2025</p>
+    <p>
+
+        <b>Evento:</b>
+        Andrés Cepeda Tour 2025
+
+    </p>
 
     <br>
 
-    <p><b>Entradas:</b> ${entradas}</p>
+    <p>
+
+        <b>Entradas:</b>
+        ${entradas}
+
+    </p>
 
     <br>
 
-    <p><b>Localidades:</b></p>
+    <p>
 
-    <p>${selectedSeats.join("<br>")}</p>
+        <b>Localidades:</b>
+
+    </p>
+
+    <p>
+
+        ${selectedSeats.join("<br>")}
+
+    </p>
 
     <br>
 
-    <p><b>Total:</b> $${total.toLocaleString()}</p>
+    <p>
+
+        <b>Total:</b>
+        $${total.toLocaleString()}
+
+    </p>
 
     <br>
 
-    <p><b>Método:</b> ${metodoPago}</p>
+    <p>
+
+        <b>Método:</b>
+        ${metodoPago}
+
+    </p>
 
     <br>
 
-    <p><b>Código:</b> ${codigo}</p>
+    <p>
+
+        <b>Código:</b>
+        ${codigo}
+
+    </p>
 
     `;
 
 
-    qrcode.innerHTML = "";
-
-
-    new QRCode(document.getElementById("qrcode"), {
-
-        text: codigo,
-
-        width:150,
-
-        height:150
-    });
-
+    actualizarQR(codigo);
 
     iniciarTimerQR();
-}
-
-
-
-/* ========================================
-   VER QR
-======================================== */
-
-function verQR(codigo){
-
-    ticketModal.style.display = "flex";
-
-    qrcode.innerHTML = "";
-
-
-    new QRCode(document.getElementById("qrcode"), {
-
-        text: codigo,
-
-        width:150,
-
-        height:150
-    });
 }
 
 
@@ -750,9 +1132,11 @@ function cerrarTicket(){
 
 function descargarQR(){
 
-    let canvas = qrcode.querySelector("canvas");
+    let canvas =
+    qrcode.querySelector("canvas");
 
-    let link = document.createElement("a");
+    let link =
+    document.createElement("a");
 
     link.download = "ticket.png";
 
@@ -772,12 +1156,13 @@ function renderCompras(){
     misCompras.innerHTML = "";
 
 
-    let compras =
-    JSON.parse(localStorage.getItem("compras"))
-    || [];
+    if(!currentUser){
+
+        return;
+    }
 
 
-    compras.forEach((compra,index)=>{
+    currentUser.compras.forEach((compra,index)=>{
 
         misCompras.innerHTML += `
 
@@ -843,10 +1228,8 @@ function renderCompras(){
 
 function verCompra(index){
 
-    let compras =
-    JSON.parse(localStorage.getItem("compras"));
-
-    let compra = compras[index];
+    let compra =
+    currentUser.compras[index];
 
 
     ticketModal.style.display = "flex";
@@ -854,36 +1237,37 @@ function verCompra(index){
 
     ticketTexto.innerHTML = `
 
-    <p><b>Código:</b> ${compra.codigo}</p>
+    <p>
+
+        <b>Código:</b>
+        ${compra.codigo}
+
+    </p>
 
     <br>
 
-    <p><b>Método:</b> ${compra.metodo}</p>
+    <p>
+
+        <b>Método:</b>
+        ${compra.metodo}
+
+    </p>
 
     <br>
 
-    <p><b>Total:</b> $${compra.total.toLocaleString()}</p>
+    <p>
 
-    <br>
+        <b>Total:</b>
+        $${compra.total.toLocaleString()}
 
-    <p><b>Localidades:</b></p>
-
-    <p>${compra.entradas.join("<br>")}</p>
+    </p>
 
     `;
 
 
-    qrcode.innerHTML = "";
+    actualizarQR(compra.codigo);
 
-
-    new QRCode(document.getElementById("qrcode"), {
-
-        text: compra.codigo,
-
-        width:150,
-
-        height:150
-    });
+    iniciarTimerQR();
 }
 
 
@@ -894,15 +1278,35 @@ function verCompra(index){
 
 function eliminarCompra(index){
 
-    let compras =
-    JSON.parse(localStorage.getItem("compras"));
+    let users =
+    JSON.parse(localStorage.getItem("users"))
+    || [];
 
-    compras.splice(index,1);
+
+    users = users.map(user => {
+
+
+        if(user.email === currentUser.email){
+
+            user.compras.splice(index,1);
+
+            currentUser = user;
+        }
+
+
+        return user;
+    });
 
 
     localStorage.setItem(
-        "compras",
-        JSON.stringify(compras)
+        "users",
+        JSON.stringify(users)
+    );
+
+
+    localStorage.setItem(
+        "currentUser",
+        JSON.stringify(currentUser)
     );
 
 
@@ -912,7 +1316,7 @@ function eliminarCompra(index){
 
 
 /* ========================================
-   INICIAR APP
+   INICIAR
 ======================================== */
 
 actualizarUsuario();
