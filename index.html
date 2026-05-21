@@ -32,22 +32,27 @@
 
 <section class="landing" id="landing">
 
-    <video
-    autoplay
-    muted
-    loop
-    playsinline
-    class="bgVideo"
->
 
-    <source
-        src="video/cepeda.mp4"
-        type="video/mp4"
+    <!-- VIDEO -->
+
+    <video
+        autoplay
+        muted
+        loop
+        playsinline
+        class="bgVideo"
     >
 
-</video>
+        <source
+            src="video/cepeda.mp4"
+            type="video/mp4"
+        >
 
-<div class="landingOverlay"></div>
+    </video>
+
+
+    <div class="landingOverlay"></div>
+
 
     <div class="landingContent">
 
@@ -58,7 +63,7 @@
 
         <h1>
 
-            ANDRÉS CEPEDA TOUR 2026
+            ANDRÉS CEPEDA TOUR 2025
 
         </h1>
 
@@ -146,6 +151,22 @@
                 <i class="fa-regular fa-circle-question"></i>
 
                 Ayuda
+
+            </a>
+
+
+            <!-- ADMIN -->
+
+            <a
+                href="#"
+                id="adminBtn"
+                style="display:none;"
+                onclick="abrirAdminPanel()"
+            >
+
+                <i class="fa-solid fa-lock"></i>
+
+                Admin
 
             </a>
 
@@ -565,6 +586,22 @@
 
                     </div>
 
+
+
+                    <!-- VIDEO EVENTO -->
+
+                    <video
+                        controls
+                        class="eventVideo"
+                    >
+
+                        <source
+                            src="video/cepeda.mp4"
+                            type="video/mp4"
+                        >
+
+                    </video>
+
                 </div>
 
             </div>
@@ -637,6 +674,7 @@
             </div>
 
 
+
             <!-- PALCOS VIP -->
 
             <div class="vipSection vipSectionOrange">
@@ -676,6 +714,7 @@
             </div>
 
 
+
             <!-- GENERAL -->
 
             <div class="generalLabel">
@@ -683,6 +722,7 @@
                 GENERAL - $90.000
 
             </div>
+
 
 
             <!-- MAPA -->
@@ -766,12 +806,13 @@
 
 
 <!-- ========================================
-     LOGIN
+     REGISTER / LOGIN
 ======================================== -->
 
 <div class="modal" id="loginModal" style="display:none;">
 
     <div class="paymentModal">
+
 
         <span
             class="closeModal"
@@ -783,12 +824,25 @@
         </span>
 
 
-        <h2>
+        <h2 id="authTitle">
 
             Iniciar Sesión
 
         </h2>
 
+
+        <!-- REGISTRO -->
+
+        <input
+            type="text"
+            id="registerName"
+            placeholder="Nombre completo"
+            class="loginInput"
+            style="display:none;"
+        >
+
+
+        <!-- EMAIL -->
 
         <input
             type="email"
@@ -798,13 +852,26 @@
         >
 
 
-        <input
-            type="password"
-            id="passwordInput"
-            placeholder="Contraseña"
-            class="loginInput"
-        >
+        <!-- PASSWORD -->
 
+        <div class="passwordContainer">
+
+            <input
+                type="password"
+                id="passwordInput"
+                placeholder="Contraseña"
+                class="loginInput"
+            >
+
+            <i
+                class="fa-regular fa-eye showPassword"
+                onclick="togglePassword()"
+            ></i>
+
+        </div>
+
+
+        <!-- RECORDAR -->
 
         <div class="rememberContainer">
 
@@ -822,14 +889,84 @@
         </div>
 
 
+
+        <!-- BOTÓN LOGIN -->
+
         <button
             class="confirmPaymentBtn"
+            id="loginActionBtn"
             onclick="iniciarSesion()"
         >
 
-            CONTINUAR
+            INICIAR SESIÓN
 
         </button>
+
+
+
+        <!-- CAMBIAR LOGIN/REGISTER -->
+
+        <button
+            class="switchAuthBtn"
+            onclick="toggleAuthMode()"
+        >
+
+            Crear cuenta
+
+        </button>
+
+
+
+        <!-- CERRAR SESIÓN -->
+
+        <button
+            class="logoutBtn"
+            id="logoutBtn"
+            onclick="cerrarSesion()"
+            style="display:none;"
+        >
+
+            CERRAR SESIÓN
+
+        </button>
+
+    </div>
+
+</div>
+
+
+
+
+
+<!-- ========================================
+     ADMIN PANEL
+======================================== -->
+
+<div class="modal" id="adminModal" style="display:none;">
+
+    <div class="ticketModal">
+
+
+        <span
+            class="closeModal"
+            onclick="cerrarAdminPanel()"
+        >
+
+            ✖
+
+        </span>
+
+
+        <h2>
+
+            Panel Administrador
+
+        </h2>
+
+
+        <div id="adminCompras">
+
+        </div>
 
     </div>
 
@@ -1059,7 +1196,7 @@
             <div id="qrTimer">
 
                 Expira en:
-                <span id="timerText">30:00</span>
+                <span id="timerText">01:00</span>
 
             </div>
 
