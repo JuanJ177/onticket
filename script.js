@@ -944,35 +944,14 @@ function actualizarTimer(){
 
 function actualizarQR(codigo){
 
-    qrcode.innerHTML = "";
+    qrcode.innerHTML = `
 
+        <img
+            src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(codigo)}"
+            id="qrImage"
+        >
 
-    const qrDiv =
-    document.createElement("div");
-
-
-    qrcode.appendChild(qrDiv);
-
-
-    setTimeout(()=>{
-
-        new QRCode(qrDiv,{
-
-            text: codigo,
-
-            width:180,
-
-            height:180,
-
-            colorDark:"#000000",
-
-            colorLight:"#ffffff",
-
-            correctLevel: QRCode.CorrectLevel.H
-
-        });
-
-    },100);
+    `;
 }
 
 
@@ -1132,16 +1111,27 @@ function cerrarTicket(){
 
 function descargarQR(){
 
-    let canvas =
-    qrcode.querySelector("canvas");
+    let qrImage =
+    document.getElementById("qrImage");
 
 
-    if(!canvas){
+    if(!qrImage){
 
-        alert("QR aún cargando");
+        alert("QR no encontrado");
 
         return;
     }
+
+
+    let link =
+    document.createElement("a");
+
+    link.href = qrImage.src;
+
+    link.download = "ticketQR.png";
+
+    link.click();
+}
 
 
     let link =
