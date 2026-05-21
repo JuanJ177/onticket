@@ -72,14 +72,14 @@ let authMode = "login";
 
 let currentUser = null;
 
-let tiempoRestante = 60;
+let tiempoRestante = 300;
 
 let intervaloQR;
 
 
 
 /* ========================================
-   CREAR ADMIN
+   ADMIN
 ======================================== */
 
 function inicializarAdmin(){
@@ -179,11 +179,6 @@ function cerrarLogin(){
     loginModal.style.display = "none";
 }
 
-
-
-/* ========================================
-   TOGGLE LOGIN / REGISTER
-======================================== */
 
 function toggleAuthMode(){
 
@@ -426,7 +421,7 @@ function cerrarSesion(){
 
 
 /* ========================================
-   ACTUALIZAR USUARIO
+   USUARIO
 ======================================== */
 
 function actualizarUsuario(){
@@ -604,7 +599,7 @@ if(localStorage.getItem("theme") === "dark"){
 
 
 /* ========================================
-   BUSCADOR EVENTOS
+   BUSCADOR
 ======================================== */
 
 function buscarEventos(){
@@ -804,7 +799,7 @@ function renderCompra(){
 
 
 /* ========================================
-   MODAL PAGO
+   PAGO
 ======================================== */
 
 function abrirPago(){
@@ -837,7 +832,7 @@ function cerrarPago(){
 
 
 /* ========================================
-   MÉTODO DE PAGO
+   MÉTODO
 ======================================== */
 
 function seleccionarMetodo(nombre){
@@ -866,7 +861,7 @@ function seleccionarMetodo(nombre){
 
 
 /* ========================================
-   QR DINÁMICO
+   QR
 ======================================== */
 
 function generarCodigoDinamico(){
@@ -877,20 +872,43 @@ function generarCodigoDinamico(){
     let random =
     Math.floor(Math.random() * 999999);
 
-    return `ONTICKET-${currentUser.name}-${random}-${tiempo}`;
+    return `ONTICKET-${random}-${tiempo}`;
+}
+
+
+function actualizarQR(codigo){
+
+    qrcode.innerHTML = "";
+
+
+    const img =
+    new Image();
+
+    img.id = "qrImage";
+
+    img.loading = "eager";
+
+    img.decoding = "sync";
+
+
+    img.src =
+    `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(codigo)}`;
+
+
+    qrcode.appendChild(img);
 }
 
 
 
 /* ========================================
-   TIMER QR
+   TIMER
 ======================================== */
 
 function iniciarTimerQR(){
 
     clearInterval(intervaloQR);
 
-    tiempoRestante = 60;
+    tiempoRestante = 300;
 
     actualizarTimer();
 
@@ -918,11 +936,6 @@ function iniciarTimerQR(){
 }
 
 
-
-/* ========================================
-   ACTUALIZAR TIMER
-======================================== */
-
 function actualizarTimer(){
 
     let minutos =
@@ -934,29 +947,29 @@ function actualizarTimer(){
 
     timerText.innerText =
     `${String(minutos).padStart(2,"0")}:${String(segundos).padStart(2,"0")}`;
+
+
+    const progressCircle =
+    document.querySelector(".progressCircle");
+
+
+    const totalTiempo = 300;
+
+    const progress =
+    tiempoRestante / totalTiempo;
+
+
+    const circumference = 326;
+
+
+    progressCircle.style.strokeDashoffset =
+    circumference * (1 - progress);
 }
 
 
 
 /* ========================================
-   ACTUALIZAR QR
-======================================== */
-
-function actualizarQR(codigo){
-
-    qrcode.innerHTML = `
-
-        <img
-            src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(codigo)}"
-            id="qrImage"
-        >
-
-    `;
-}
-
-
-/* ========================================
-   CONFIRMAR COMPRA
+   COMPRA
 ======================================== */
 
 function confirmarCompra(){
@@ -1093,7 +1106,7 @@ function confirmarCompra(){
 
 
 /* ========================================
-   CERRAR TICKET
+   TICKET
 ======================================== */
 
 function cerrarTicket(){
@@ -1103,11 +1116,6 @@ function cerrarTicket(){
     clearInterval(intervaloQR);
 }
 
-
-
-/* ========================================
-   DESCARGAR QR
-======================================== */
 
 function descargarQR(){
 
@@ -1129,17 +1137,6 @@ function descargarQR(){
     link.href = qrImage.src;
 
     link.download = "ticketQR.png";
-
-    link.click();
-}
-
-
-    let link =
-    document.createElement("a");
-
-    link.download = "ticket.png";
-
-    link.href = canvas.toDataURL();
 
     link.click();
 }
@@ -1220,11 +1217,6 @@ function renderCompras(){
 }
 
 
-
-/* ========================================
-   VER COMPRA
-======================================== */
-
 function verCompra(index){
 
     let compra =
@@ -1269,11 +1261,6 @@ function verCompra(index){
     iniciarTimerQR();
 }
 
-
-
-/* ========================================
-   ELIMINAR COMPRA
-======================================== */
 
 function eliminarCompra(index){
 
