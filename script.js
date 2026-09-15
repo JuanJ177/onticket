@@ -905,7 +905,7 @@ function iniciarTimerQR(){
 
     clearInterval(intervaloQR);
 
-    tiempoRestante = 300;
+    tiempoRestante = 30;
 
     actualizarTimer();
 
