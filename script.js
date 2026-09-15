@@ -962,7 +962,7 @@ function actualizarTimer(){
 
     if(progressCircle){
 
-        const totalTiempo = 300;
+        const totalTiempo = 30;
 
         const progress =
         tiempoRestante / totalTiempo;
