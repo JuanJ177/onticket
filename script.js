@@ -69,7 +69,7 @@ let authMode = "login";
 
 let currentUser = null;
 
-let tiempoRestante = 300;
+let tiempoRestante = 30;
 
 let intervaloQR;
 
