@@ -7,14 +7,23 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>OnTicket</title>
+    <title>OnTicket · Vive la mejor experiencia</title>
 
-    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap"
+    >
 
     <link
         rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
     >
+
+    <link rel="stylesheet" href="style.css">
 
 </head>
 
@@ -23,23 +32,14 @@
 
 
 <!-- ========================================
-     LANDING
+     LANDING / PRESENTACIÓN
 ======================================== -->
 
 <section class="landing" id="landing">
 
-    <video
-        autoplay
-        muted
-        loop
-        playsinline
-        class="bgVideo"
-    >
+    <video autoplay muted loop playsinline class="bgVideo">
 
-        <source
-            src="video/cepeda.mp4"
-            type="video/mp4"
-        >
+        <source src="video/cepeda.mp4" type="video/mp4">
 
     </video>
 
@@ -47,37 +47,98 @@
 
     <div class="landingContent">
 
-        <img
-            src="img/logo.png"
-            class="landingLogo"
-        >
+        <img src="img/logo.png" class="landingLogo" alt="OnTicket">
+
+        <span class="landingKicker">Conciertos · Humor · Festivales · Palcos</span>
 
         <h1>
-
-            ANDRÉS CEPEDA TOUR 2025
-
+            Vive la <span class="gradText">mejor experiencia</span>
         </h1>
 
         <p>
-
-            Vive una experiencia inolvidable con OnTicket
-
+            No vendemos boletas, vendemos momentos. Elige tu lugar, vive el show.
         </p>
 
-        <button
-            class="exploreBtn"
-            onclick="mostrarHome()"
-        >
+        <button class="exploreBtn" onclick="mostrarHome()">
 
-            EXPLORAR EVENTOS
+            EXPLORAR EXPERIENCIAS
+
+            <i class="fa-solid fa-arrow-right"></i>
 
         </button>
+
+    </div>
+
+    <div class="scrollHint" onclick="mostrarHome()">
+
+        <i class="fa-solid fa-chevron-down"></i>
 
     </div>
 
 </section>
 
 
+
+<!-- ========================================
+     HEADER (compartido)
+======================================== -->
+
+<header class="header" id="mainHeader">
+
+    <div class="logoContainer" onclick="volverHome()">
+
+        <img src="img/logo.png" class="logoImg" alt="OnTicket">
+
+    </div>
+
+    <nav class="navbar">
+
+        <a href="#" id="navInicio" class="activeNav" onclick="volverHome(); return false;">
+            <i class="fa-solid fa-house"></i>
+            Inicio
+        </a>
+
+        <a href="#" onclick="irASeccion('eventos'); return false;">
+            <i class="fa-regular fa-star"></i>
+            Eventos
+        </a>
+
+        <a href="#" onclick="abrirMisCompras(); return false;">
+            <i class="fa-solid fa-ticket"></i>
+            Mis boletas
+        </a>
+
+        <a href="#" onclick="abrirAyuda(); return false;">
+            <i class="fa-regular fa-circle-question"></i>
+            Ayuda
+        </a>
+
+        <a href="#" id="adminBtn" style="display:none;" onclick="abrirAdminPanel(); return false;">
+            <i class="fa-solid fa-lock"></i>
+            Admin
+        </a>
+
+    </nav>
+
+    <div class="headerRight">
+
+        <button class="themeToggle" onclick="toggleTheme()" title="Cambiar tema">
+
+            <i class="fa-solid fa-moon"></i>
+
+        </button>
+
+        <div class="loginBtn" id="btnLogin" onclick="abrirLogin()">
+
+            <i class="fa-solid fa-user"></i>
+
+            Iniciar sesión
+
+        </div>
+
+    </div>
+
+</header>
 
 
 
@@ -87,265 +148,98 @@
 
 <section class="homePage" id="homePage">
 
-    <header class="header">
+    <!-- BANNER INTERACTIVO -->
 
-        <div class="logoContainer">
+    <section class="heroCarousel" id="heroCarousel">
 
-            <img
-                src="img/logo.png"
-                class="logoImg"
+        <div class="heroSlides" id="heroSlides"></div>
+
+        <div class="heroTagline">
+
+            <i class="fa-solid fa-bolt"></i>
+
+            Vive la mejor experiencia
+
+        </div>
+
+        <button class="heroArrow left" onclick="moverSlide(-1)" aria-label="Anterior">
+            <i class="fa-solid fa-chevron-left"></i>
+        </button>
+
+        <button class="heroArrow right" onclick="moverSlide(1)" aria-label="Siguiente">
+            <i class="fa-solid fa-chevron-right"></i>
+        </button>
+
+        <div class="heroDots" id="heroDots"></div>
+
+    </section>
+
+
+
+    <!-- FILTROS -->
+
+    <section class="filtersBar" id="filtros">
+
+        <div class="searchBox">
+
+            <i class="fa-solid fa-magnifying-glass"></i>
+
+            <input
+                type="text"
+                id="searchInput"
+                placeholder="Buscar artista, evento o lugar..."
+                oninput="aplicarFiltros()"
             >
 
         </div>
 
+        <div class="filterGroup">
 
-        <nav class="navbar">
+            <span class="filterLabel">
+                <i class="fa-solid fa-location-dot"></i>
+                Ciudad
+            </span>
 
-            <a href="#" class="activeNav">
+            <div class="chips" id="cityChips"></div>
 
-                <i class="fa-solid fa-house"></i>
+        </div>
 
-                Inicio
+        <div class="filterGroup">
 
-            </a>
-
-
-            <a href="#eventos">
-
-                <i class="fa-regular fa-star"></i>
-
-                Eventos
-
-            </a>
-
-
-            <a href="#categorias">
-
+            <span class="filterLabel">
                 <i class="fa-solid fa-table-cells-large"></i>
+                Categoría
+            </span>
 
-                Categorías
-
-            </a>
-
-
-            <a href="#" onclick="abrirAyuda()">
-
-                <i class="fa-regular fa-circle-question"></i>
-
-                Ayuda
-
-            </a>
-
-
-            <a
-                href="#"
-                id="adminBtn"
-                style="display:none;"
-                onclick="abrirAdminPanel()"
-            >
-
-                <i class="fa-solid fa-lock"></i>
-
-                Admin
-
-            </a>
-
-        </nav>
-
-
-
-        <div class="headerRight">
-
-            <div class="themeToggle" onclick="toggleTheme()">
-
-                ☀️ 🌙
-
-            </div>
-
-
-            <div
-                class="loginBtn"
-                id="btnLogin"
-                onclick="abrirLogin()"
-            >
-
-                <i class="fa-solid fa-user"></i>
-
-                Iniciar sesión
-
-            </div>
-
-        </div>
-
-    </header>
-
-
-
-
-    <!-- HERO -->
-
-    <section class="hero">
-
-        <div class="heroText">
-
-            <h1>
-
-                Descubre los mejores eventos en vivo
-
-            </h1>
-
-            <p>
-
-                Compra entradas de manera rápida, segura y moderna.
-
-            </p>
+            <div class="chips" id="categoryChips"></div>
 
         </div>
 
     </section>
-
-
-
-
-    <!-- BUSCADOR -->
-
-    <div class="searchContainer">
-
-        <input
-            type="text"
-            id="searchInput"
-            placeholder="Buscar artista o evento..."
-            onkeyup="buscarEventos()"
-        >
-
-    </div>
-
-
-
-
-    <!-- CATEGORÍAS -->
-
-    <section class="categories" id="categorias">
-
-        <div class="categoryCard">
-
-            <i class="fa-solid fa-music"></i>
-
-            <p>Conciertos</p>
-
-        </div>
-
-
-        <div class="categoryCard">
-
-            <i class="fa-solid fa-microphone"></i>
-
-            <p>Festivales</p>
-
-        </div>
-
-
-        <div class="categoryCard">
-
-            <i class="fa-solid fa-face-laugh"></i>
-
-            <p>Humor</p>
-
-        </div>
-
-
-        <div class="categoryCard">
-
-            <i class="fa-solid fa-futbol"></i>
-
-            <p>Deportes</p>
-
-        </div>
-
-    </section>
-
 
 
 
     <!-- EVENTOS -->
 
-    <section class="eventsSection" id="eventos">
+    <section class="eventsWrap" id="eventos">
 
-        <div
-            class="eventCard"
-            onclick="abrirEvento()"
-        >
+        <div class="sectionHead">
 
-            <img src="img/cepeda.jpeg">
+            <div>
 
-            <div class="eventCardInfo">
+                <span class="sectionKicker">Experiencias en vivo</span>
 
-                <h3>
-
-                    Andrés Cepeda
-
-                </h3>
-
-                <p>
-
-                    Tour 2025
-
-                </p>
+                <h2 id="eventosTitulo">Todos los eventos</h2>
 
             </div>
 
-        </div>
-
-
-
-        <div class="eventCard">
-
-            <img src="img/donjediondo.jpeg">
-
-            <div class="eventCardInfo">
-
-                <h3>
-
-                    Don Jediondo
-
-                </h3>
-
-                <p>
-
-                    Humor Colombiano
-
-                </p>
-
-            </div>
+            <span class="resultCount" id="resultCount"></span>
 
         </div>
 
-
-
-        <div class="eventCard">
-
-            <img src="img/luisalfonso.jpeg">
-
-            <div class="eventCardInfo">
-
-                <h3>
-
-                    Luis Alfonso
-
-                </h3>
-
-                <p>
-
-                    La Última Copa
-
-                </p>
-
-            </div>
-
-        </div>
+        <div class="eventsGrid" id="eventsGrid"></div>
 
     </section>
-
 
 
 
@@ -354,375 +248,184 @@
     <section class="benefits">
 
         <div class="benefit">
-
             <i class="fa-solid fa-shield-halved"></i>
-
             <div>
-
-                <h4>
-
-                    COMPRA SEGURA
-
-                </h4>
-
-                <p>
-
-                    Tus datos están protegidos
-
-                </p>
-
+                <h4>COMPRA SEGURA</h4>
+                <p>Tus datos están protegidos</p>
             </div>
-
         </div>
 
-
-
         <div class="benefit">
-
-            <i class="fa-solid fa-ticket"></i>
-
+            <i class="fa-solid fa-file-invoice-dollar"></i>
             <div>
-
-                <h4>
-
-                    MEJORES EVENTOS
-
-                </h4>
-
-                <p>
-
-                    Shows y conciertos premium
-
-                </p>
-
+                <h4>FACTURA ELECTRÓNICA</h4>
+                <p>Si la necesitas, te la enviamos</p>
             </div>
-
         </div>
 
-
+        <div class="benefit">
+            <i class="fa-solid fa-eye"></i>
+            <div>
+                <h4>PRECIOS CLAROS</h4>
+                <p>Servicio e IVA siempre visibles</p>
+            </div>
+        </div>
 
         <div class="benefit">
-
             <i class="fa-solid fa-headset"></i>
-
             <div>
-
-                <h4>
-
-                    ATENCIÓN 24/7
-
-                </h4>
-
-                <p>
-
-                    Soporte disponible siempre
-
-                </p>
-
+                <h4>ATENCIÓN 24/7</h4>
+                <p>Soporte disponible siempre</p>
             </div>
-
         </div>
 
     </section>
 
+    <footer class="footer">
+
+        <img src="img/logo.png" alt="OnTicket">
+
+        <p>© OnTicket · Vive la mejor experiencia</p>
+
+    </footer>
+
 </section>
-
-
 
 
 
 <!-- ========================================
-     EVENTO PAGE
+     EVENTO
 ======================================== -->
 
 <section class="eventoPage" id="eventoPage">
 
-    <header class="header">
-
-        <div class="logoContainer">
-
-            <img
-                src="img/logo.png"
-                class="logoImg"
-            >
-
-        </div>
+    <!-- BANNER DEL EVENTO -->
+    <div class="eventHero" id="eventHero"></div>
 
 
-        <nav class="navbar">
+    <section class="eventMain">
 
-            <a href="#" onclick="volverHome()">
+        <!-- PLANO -->
 
-                <i class="fa-solid fa-house"></i>
+        <div class="planoCard" id="planoSection">
 
-                Inicio
+            <div class="planoHead">
 
-            </a>
+                <div>
 
+                    <span class="sectionKicker">Paso 1</span>
 
-            <a href="#" class="activeNav">
-
-                <i class="fa-solid fa-ticket"></i>
-
-                Evento
-
-            </a>
-
-        </nav>
-
-    </header>
-
-
-
-
-    <section class="mainContainer">
-
-
-        <!-- LEFT -->
-
-        <div class="leftPanel">
-
-            <div class="eventCardDetail">
-
-                <img
-                    src="img/cepeda.jpeg"
-                    class="eventPoster"
-                >
-
-                <div class="eventInfo">
-
-                    <h2>
-
-                        Andrés Cepeda
-
-                    </h2>
-
-                    <p>
-
-                        Tour 2025
-
-                    </p>
-
-                    <div class="eventData">
-
-                        <p>
-
-                            <i class="fa-regular fa-calendar"></i>
-
-                            Sábado 24 Mayo
-
-                        </p>
-
-                        <p>
-
-                            <i class="fa-solid fa-location-dot"></i>
-
-                            Parque Malocas
-
-                        </p>
-
-                        <p>
-
-                            <i class="fa-regular fa-clock"></i>
-
-                            8:00 PM
-
-                        </p>
-
-                    </div>
-
-
-                    <video
-                        controls
-                        class="eventVideo"
-                    >
-
-                        <source
-                            src="video/cepeda.mp4"
-                            type="video/mp4"
-                        >
-
-                    </video>
+                    <h2>Elige tu experiencia</h2>
 
                 </div>
+
+                <div class="pisoTabs" id="pisoTabs"></div>
+
+            </div>
+
+
+            <!-- FILTROS DEL PLANO -->
+
+            <div class="planoFiltros">
+
+                <div class="chips" id="zonaChips"></div>
+
+                <div class="planoFiltrosRow">
+
+                    <label class="rangeFilter">
+
+                        <span>Precio máx: <b id="precioMaxTxt"></b></span>
+
+                        <input type="range" id="precioMax" oninput="cambiarPrecioMax()">
+
+                    </label>
+
+                    <label class="switch">
+                        <input type="checkbox" id="soloDisponibles" onchange="renderPlano()">
+                        <span class="slider"></span>
+                        Solo disponibles
+                    </label>
+
+                    <label class="switch" id="switchIndividuales">
+                        <input type="checkbox" id="soloIndividuales" onchange="renderPlano()">
+                        <span class="slider"></span>
+                        Palcos individuales
+                    </label>
+
+                </div>
+
+            </div>
+
+
+            <!-- MAPA SVG -->
+
+            <div class="planoWrap" id="planoWrap">
+
+                <svg id="planoSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+
+                <div class="zoomControls">
+
+                    <button onclick="zoomPlano(1.25)" title="Acercar"><i class="fa-solid fa-plus"></i></button>
+
+                    <button onclick="zoomPlano(0.8)" title="Alejar"><i class="fa-solid fa-minus"></i></button>
+
+                    <button onclick="resetZoom()" title="Restablecer"><i class="fa-solid fa-expand"></i></button>
+
+                </div>
+
+                <div class="planoTooltip" id="planoTooltip"></div>
+
+            </div>
+
+
+            <div class="legend">
+
+                <span><i class="lg lgDisp"></i> Disponible</span>
+                <span><i class="lg lgSel"></i> Seleccionado</span>
+                <span><i class="lg lgSold"></i> Vendido</span>
+                <span class="lgPalcoItem"><i class="lg lgInd"></i> Palco individual (venta por puesto)</span>
+                <span class="lgPalcoItem"><i class="lg lgPalco"></i> Palco completo (10 personas)</span>
 
             </div>
 
         </div>
 
 
+        <!-- SIDEBAR -->
 
+        <aside class="eventSide">
 
-        <!-- CENTER -->
+            <div class="sideCard">
 
-        <div class="centerPanel">
+                <h3><i class="fa-solid fa-layer-group"></i> Localidades</h3>
 
-            <div class="mapTitle">
+                <div id="zonasLista"></div>
 
-                Selecciona tu ubicación
-
-            </div>
-
-
-            <div class="stageContainer">
-
-                <div class="stage">
-
-                    TARIMA
-
-                </div>
+                <p class="feeNote" id="feeNote"></p>
 
             </div>
 
+            <div class="sideCard">
 
+                <h3><i class="fa-solid fa-map-location-dot"></i> ¿Dónde es?</h3>
 
-            <div class="vipSection diamondSection">
-
-                <h3>
-
-                    PALCO DIAMANTE - $4.500.000
-
-                </h3>
-
-                <div class="vipSeats">
-
-                    <div class="vipSeat diamond">D1</div>
-                    <div class="vipSeat diamond">D2</div>
-                    <div class="vipSeat diamond">D3</div>
-                    <div class="vipSeat diamond">D4</div>
-                    <div class="vipSeat diamond">D5</div>
-                    <div class="vipSeat diamond">D6</div>
-                    <div class="vipSeat diamond">D7</div>
-                    <div class="vipSeat diamond">D8</div>
-                    <div class="vipSeat diamond">D9</div>
-                    <div class="vipSeat diamond">D10</div>
-
-                    <div class="vipSeat diamond">D11</div>
-                    <div class="vipSeat diamond">D12</div>
-                    <div class="vipSeat diamond">D13</div>
-                    <div class="vipSeat diamond">D14</div>
-                    <div class="vipSeat diamond">D15</div>
-                    <div class="vipSeat diamond">D16</div>
-                    <div class="vipSeat diamond">D17</div>
-                    <div class="vipSeat diamond">D18</div>
-                    <div class="vipSeat diamond">D19</div>
-                    <div class="vipSeat diamond">D20</div>
-
-                </div>
+                <div id="mapaEvento"></div>
 
             </div>
 
+            <div class="sideCard" id="videoCard">
 
+                <h3><i class="fa-solid fa-play"></i> Mira un adelanto</h3>
 
-            <div class="vipSection vipSectionOrange">
-
-                <h3>
-
-                    PALCO VIP - $3.000.000
-
-                </h3>
-
-                <div class="vipSeats">
-
-                    <div class="vipSeat vip">V1</div>
-                    <div class="vipSeat vip">V2</div>
-                    <div class="vipSeat vip">V3</div>
-                    <div class="vipSeat vip">V4</div>
-                    <div class="vipSeat vip">V5</div>
-                    <div class="vipSeat vip">V6</div>
-                    <div class="vipSeat vip">V7</div>
-                    <div class="vipSeat vip">V8</div>
-                    <div class="vipSeat vip">V9</div>
-                    <div class="vipSeat vip">V10</div>
-
-                    <div class="vipSeat vip">V11</div>
-                    <div class="vipSeat vip">V12</div>
-                    <div class="vipSeat vip">V13</div>
-                    <div class="vipSeat vip">V14</div>
-                    <div class="vipSeat vip">V15</div>
-                    <div class="vipSeat vip">V16</div>
-                    <div class="vipSeat vip">V17</div>
-                    <div class="vipSeat vip">V18</div>
-                    <div class="vipSeat vip">V19</div>
-                    <div class="vipSeat vip">V20</div>
-
-                </div>
+                <video controls class="eventVideo" id="eventVideo"></video>
 
             </div>
 
-
-
-            <div class="generalLabel">
-
-                GENERAL - $90.000
-
-            </div>
-
-
-            <div
-                class="seatMap"
-                id="grid"
-            ></div>
-
-        </div>
-
-
-
-
-        <!-- RIGHT -->
-
-        <div class="rightPanel">
-
-            <div class="purchaseBox">
-
-                <h3>
-
-                    TU COMPRA
-
-                </h3>
-
-                <div id="selectedSeats"></div>
-
-                <div class="purchaseTotal">
-
-                    <span>Total</span>
-
-                    <span id="total">$0</span>
-
-                </div>
-
-                <button
-                    class="continueBtn"
-                    onclick="abrirPago()"
-                >
-
-                    CONTINUAR
-
-                </button>
-
-            </div>
-
-
-
-            <div class="purchaseBox">
-
-                <h3>
-
-                    MIS COMPRAS
-
-                </h3>
-
-                <div id="misCompras"></div>
-
-            </div>
-
-        </div>
+        </aside>
 
     </section>
 
 </section>
-
-
 
 
 
@@ -730,56 +433,51 @@
      ADMIN
 ======================================== -->
 
-<section
-    class="adminPage"
-    id="adminPage"
-    style="display:none;"
->
+<section class="adminPage" id="adminPage">
 
     <div class="adminContainer">
 
-        <h1>
+        <h1>Panel Administrativo</h1>
 
-            Panel Administrativo
+        <p class="adminSubtitle">Últimas compras realizadas</p>
 
-        </h1>
-
-        <p class="adminSubtitle">
-
-            Últimas compras realizadas
-
-        </p>
+        <div class="adminStats" id="adminStats"></div>
 
         <div class="adminSearch">
 
             <input
                 type="text"
                 id="searchCompra"
-                placeholder="Buscar por ID..."
-                onkeyup="buscarCompraAdmin()"
+                placeholder="Buscar por código, usuario o evento..."
+                oninput="buscarCompraAdmin()"
             >
 
         </div>
 
-        <table class="adminTable">
+        <div class="tableScroll">
 
-            <thead>
+            <table class="adminTable">
 
-                <tr>
+                <thead>
 
-                    <th>Usuario</th>
-                    <th>Correo</th>
-                    <th>Total</th>
-                    <th>Método</th>
-                    <th>Código</th>
+                    <tr>
+                        <th>Usuario</th>
+                        <th>Evento</th>
+                        <th>Boletas</th>
+                        <th>Servicio + IVA</th>
+                        <th>Total</th>
+                        <th>Método</th>
+                        <th>Factura</th>
+                        <th>Código</th>
+                    </tr>
 
-                </tr>
+                </thead>
 
-            </thead>
+                <tbody id="adminTableBody"></tbody>
 
-            <tbody id="adminTableBody"></tbody>
+            </table>
 
-        </table>
+        </div>
 
     </div>
 
@@ -787,93 +485,47 @@
 
 
 
-
-
 <!-- ========================================
-     LOGIN
+     BARRA FLOTANTE DEL CARRITO
 ======================================== -->
 
-<div class="modal" id="loginModal" style="display:none;">
+<div class="cartBar" id="cartBar">
 
-    <div class="paymentModal">
+    <div class="cartBarInfo" onclick="abrirCheckout()">
 
-        <span
-            class="closeModal"
-            onclick="cerrarLogin()"
-        >
+        <div class="cartBadge">
 
-            ✖
+            <i class="fa-solid fa-ticket"></i>
 
-        </span>
-
-        <h2 id="authTitle">
-
-            Iniciar Sesión
-
-        </h2>
-
-        <input
-            type="text"
-            id="registerName"
-            placeholder="Nombre completo"
-            class="loginInput"
-            style="display:none;"
-        >
-
-        <input
-            type="email"
-            id="emailInput"
-            placeholder="Correo electrónico"
-            class="loginInput"
-        >
-
-        <div class="passwordContainer">
-
-            <input
-                type="password"
-                id="passwordInput"
-                placeholder="Contraseña"
-                class="loginInput"
-            >
-
-            <i
-                class="fa-regular fa-eye showPassword"
-                onclick="togglePassword()"
-            ></i>
+            <span id="cartCount">0</span>
 
         </div>
 
-        <div class="rememberContainer">
+        <div>
 
-            <input
-                type="checkbox"
-                id="rememberUser"
-            >
+            <div class="cartItemsTxt" id="cartItemsTxt"></div>
 
-            <label>
-
-                Recordar sesión
-
-            </label>
+            <div class="cartSub">Incluye servicio e IVA · <u>ver detalle</u></div>
 
         </div>
 
-        <button
-            class="confirmPaymentBtn"
-            id="loginActionBtn"
-            onclick="iniciarSesion()"
-        >
+    </div>
 
-            INICIAR SESIÓN
+    <div class="cartBarRight">
+
+        <div class="cartTotal" id="cartTotal">$0</div>
+
+        <button class="cartClear" onclick="vaciarCarrito()" title="Vaciar">
+
+            <i class="fa-regular fa-trash-can"></i>
 
         </button>
 
-        <button
-            class="switchAuthBtn"
-            onclick="toggleAuthMode()"
-        >
+        <button class="cartBuy" onclick="abrirCheckout()">
 
-            Crear cuenta
+            COMPRAR
+
+            <i class="fa-solid fa-arrow-right"></i>
 
         </button>
 
@@ -882,6 +534,51 @@
 </div>
 
 
+<div class="toastZone" id="toastZone"></div>
+
+
+
+<!-- ========================================
+     LOGIN
+======================================== -->
+
+<div class="modal" id="loginModal">
+
+    <div class="modalBox small">
+
+        <span class="closeModal" onclick="cerrarLogin()">✖</span>
+
+        <h2 id="authTitle">Iniciar Sesión</h2>
+
+        <p class="modalSub" id="authMsg">Ingresa para comprar y ver tus boletas.</p>
+
+        <input type="text" id="registerName" placeholder="Nombre completo" class="loginInput" style="display:none;">
+
+        <input type="email" id="emailInput" placeholder="Correo electrónico" class="loginInput">
+
+        <div class="passwordContainer">
+
+            <input type="password" id="passwordInput" placeholder="Contraseña" class="loginInput">
+
+            <i class="fa-regular fa-eye showPassword" onclick="togglePassword()"></i>
+
+        </div>
+
+        <div class="rememberContainer">
+
+            <input type="checkbox" id="rememberUser">
+
+            <label for="rememberUser">Recordar sesión</label>
+
+        </div>
+
+        <button class="primaryBtn" id="loginActionBtn" onclick="iniciarSesion()">INICIAR SESIÓN</button>
+
+        <button class="switchAuthBtn" onclick="toggleAuthMode()">Crear cuenta</button>
+
+    </div>
+
+</div>
 
 
 
@@ -889,48 +586,25 @@
      AYUDA
 ======================================== -->
 
-<div class="modal" id="ayudaModal" style="display:none;">
+<div class="modal" id="ayudaModal">
 
-    <div class="ticketModal">
+    <div class="modalBox small">
 
-        <span
-            class="closeModal"
-            onclick="cerrarAyuda()"
-        >
+        <span class="closeModal" onclick="cerrarAyuda()">✖</span>
 
-            ✖
+        <h2>Centro de Ayuda</h2>
 
-        </span>
+        <div class="helpList">
 
-        <h2>
+            <p><i class="fa-solid fa-phone"></i> +57 320 555 7788</p>
 
-            Centro de Ayuda
+            <p><i class="fa-regular fa-envelope"></i> soporte@onticket.com</p>
 
-        </h2>
+            <p><i class="fa-regular fa-clock"></i> Atención 24/7</p>
 
-        <br>
+            <p><i class="fa-solid fa-file-invoice"></i> Factura electrónica: facturacion@onticket.com</p>
 
-        <p>
-
-            📞 +57 320 555 7788
-
-        </p>
-
-        <br>
-
-        <p>
-
-            ✉ soporte@onticket.com
-
-        </p>
-
-        <br>
-
-        <p>
-
-            Atención 24/7
-
-        </p>
+        </div>
 
     </div>
 
@@ -938,84 +612,17 @@
 
 
 
-
-
 <!-- ========================================
-     PASARELA
+     POPUP PALCO
 ======================================== -->
 
-<div class="modal" id="pagoModal" style="display:none;">
+<div class="modal" id="palcoModal">
 
-    <div class="paymentModal">
+    <div class="modalBox">
 
-        <span
-            class="closeModal"
-            onclick="cerrarPago()"
-        >
+        <span class="closeModal" onclick="cerrarModal('palcoModal')">✖</span>
 
-            ✖
-
-        </span>
-
-        <h2>
-
-            Método de pago
-
-        </h2>
-
-        <div class="paymentMethods">
-
-            <div
-                class="paymentMethod"
-                onclick="seleccionarMetodo('Nequi')"
-            >
-
-                <img src="img/nequi.png">
-
-                <p>Nequi</p>
-
-            </div>
-
-
-            <div
-                class="paymentMethod"
-                onclick="seleccionarMetodo('PSE')"
-            >
-
-                <img src="img/pse.png">
-
-                <p>PSE</p>
-
-            </div>
-
-
-            <div
-                class="paymentMethod"
-                onclick="seleccionarMetodo('Visa')"
-            >
-
-                <img src="img/visa.png">
-
-                <p>Visa</p>
-
-            </div>
-
-        </div>
-
-        <div id="metodoSeleccionado">
-
-            Ningún método seleccionado
-
-        </div>
-
-        <button
-            class="confirmPaymentBtn"
-            onclick="confirmarCompra()"
-        >
-
-            Confirmar pago
-
-        </button>
+        <div id="palcoContenido"></div>
 
     </div>
 
@@ -1023,77 +630,214 @@
 
 
 
+<!-- ========================================
+     POPUP ZONA GENERAL
+======================================== -->
+
+<div class="modal" id="generalModal">
+
+    <div class="modalBox small">
+
+        <span class="closeModal" onclick="cerrarModal('generalModal')">✖</span>
+
+        <div id="generalContenido"></div>
+
+    </div>
+
+</div>
+
 
 
 <!-- ========================================
-     TICKET
+     CHECKOUT (Resumen → Facturación → Pago)
 ======================================== -->
 
-<div class="modal" id="ticketModal" style="display:none;">
+<div class="modal" id="checkoutModal">
 
-    <div class="ticketModal">
+    <div class="modalBox large checkoutBox">
 
-        <span
-            class="closeModal"
-            onclick="cerrarTicket()"
-        >
+        <span class="closeModal" onclick="cerrarModal('checkoutModal')">✖</span>
 
-            ✖
+        <div class="stepper" id="stepper">
 
-        </span>
+            <div class="step" data-step="1"><span>1</span> Resumen</div>
 
-        <h2>
+            <div class="stepLine"></div>
 
-            🎟️ Ticket generado
+            <div class="step" data-step="2"><span>2</span> Facturación</div>
 
-        </h2>
+            <div class="stepLine"></div>
 
-        <div class="ticketCard">
+            <div class="step" data-step="3"><span>3</span> Pago</div>
 
-            <div id="ticketTexto"></div>
-
-            <div id="qrcode"></div>
+        </div>
 
 
-            <div class="qrTimerContainer">
+        <!-- PASO 1 -->
 
-                <svg class="progressRing" width="120" height="120">
+        <div class="checkoutStep" id="paso1">
 
-                    <circle
-                        class="progressBg"
-                        cx="60"
-                        cy="60"
-                        r="52"
-                    ></circle>
+            <h2>Resumen de tu compra</h2>
 
-                    <circle
-                        class="progressCircle"
-                        cx="60"
-                        cy="60"
-                        r="52"
-                    ></circle>
+            <div class="checkoutEvent" id="checkoutEvento"></div>
 
-                </svg>
+            <div class="checkoutItems" id="checkoutItems"></div>
+
+        </div>
 
 
-                <div id="qrTimer">
+        <!-- PASO 2 -->
 
-                    05:00
+        <div class="checkoutStep" id="paso2">
+
+            <h2>Facturación electrónica</h2>
+
+            <label class="feToggle">
+
+                <input type="checkbox" id="quiereFactura" onchange="toggleFactura()">
+
+                <div>
+
+                    <b>Quiero factura electrónica</b>
+
+                    <small>Se genera según la resolución DIAN y se envía a tu correo. Si no la solicitas recibes un comprobante de compra.</small>
 
                 </div>
 
+            </label>
+
+            <div class="feForm" id="feForm">
+
+                <div class="formGrid">
+
+                    <label>
+                        Tipo de persona
+                        <select id="feTipoPersona" onchange="cambioTipoPersona()">
+                            <option value="Natural">Persona natural</option>
+                            <option value="Jurídica">Persona jurídica</option>
+                        </select>
+                    </label>
+
+                    <label>
+                        Tipo de documento
+                        <select id="feTipoDoc" onchange="calcularDV()">
+                            <option value="CC">Cédula de ciudadanía</option>
+                            <option value="CE">Cédula de extranjería</option>
+                            <option value="NIT">NIT</option>
+                            <option value="PP">Pasaporte</option>
+                        </select>
+                    </label>
+
+                    <label>
+                        Número de documento
+                        <div class="docRow">
+                            <input type="text" id="feDocumento" inputmode="numeric" placeholder="Ej: 1121000000" oninput="calcularDV()">
+                            <span class="dvBox" id="feDV" title="Dígito de verificación">DV -</span>
+                        </div>
+                    </label>
+
+                    <label>
+                        <span id="feNombreLbl">Nombre completo</span>
+                        <input type="text" id="feNombre" placeholder="Como aparece en el documento">
+                    </label>
+
+                    <label>
+                        Correo para la factura
+                        <input type="email" id="feCorreo" placeholder="facturas@correo.com">
+                    </label>
+
+                    <label>
+                        Teléfono
+                        <input type="tel" id="feTelefono" placeholder="300 000 0000">
+                    </label>
+
+                    <label>
+                        Dirección
+                        <input type="text" id="feDireccion" placeholder="Calle / Carrera">
+                    </label>
+
+                    <label>
+                        Ciudad
+                        <input type="text" id="feCiudad" placeholder="Villavicencio">
+                    </label>
+
+                    <label class="full">
+                        Responsabilidad fiscal
+                        <select id="feResponsabilidad">
+                            <option value="R-99-PN">R-99-PN · No responsable</option>
+                            <option value="O-13">O-13 · Gran contribuyente</option>
+                            <option value="O-15">O-15 · Autorretenedor</option>
+                            <option value="O-23">O-23 · Agente de retención IVA</option>
+                            <option value="O-47">O-47 · Régimen simple de tributación</option>
+                        </select>
+                    </label>
+
+                </div>
+
+                <button class="linkBtn" onclick="usarDatosCuenta()">
+
+                    <i class="fa-solid fa-user-check"></i>
+
+                    Usar los datos de mi cuenta
+
+                </button>
+
             </div>
 
         </div>
 
-        <button
-            class="downloadBtn"
-            onclick="descargarQR()"
-        >
 
-            Descargar QR
+        <!-- PASO 3 -->
 
-        </button>
+        <div class="checkoutStep" id="paso3">
+
+            <h2>Método de pago</h2>
+
+            <div class="paymentMethods" id="paymentMethods"></div>
+
+            <div id="metodoSeleccionado" class="metodoTxt">Ningún método seleccionado</div>
+
+            <label class="terms">
+
+                <input type="checkbox" id="aceptaTerminos">
+
+                Acepto los términos y condiciones y la política de tratamiento de datos.
+
+            </label>
+
+            <p class="simNote">
+
+                <i class="fa-solid fa-circle-info"></i>
+
+                Pasarela de pago simulada (proyecto académico).
+
+            </p>
+
+        </div>
+
+
+        <!-- DESGLOSE SIEMPRE VISIBLE -->
+
+        <div class="breakdown" id="breakdown"></div>
+
+
+        <div class="checkoutFooter">
+
+            <button class="ghostBtn" id="btnAtras" onclick="pasoCheckout(-1)">
+
+                <i class="fa-solid fa-arrow-left"></i>
+
+                Atrás
+
+            </button>
+
+            <button class="primaryBtn" id="btnSiguiente" onclick="pasoCheckout(1)">
+
+                Continuar
+
+            </button>
+
+        </div>
 
     </div>
 
@@ -1101,6 +845,87 @@
 
 
 
+<!-- ========================================
+     TICKET / CONFIRMACIÓN
+======================================== -->
+
+<div class="modal" id="ticketModal">
+
+    <div class="modalBox large">
+
+        <span class="closeModal" onclick="cerrarTicket()">✖</span>
+
+        <div class="successHead">
+
+            <div class="successIcon"><i class="fa-solid fa-check"></i></div>
+
+            <h2>¡Tu experiencia está asegurada!</h2>
+
+        </div>
+
+        <div class="ticketGrid">
+
+            <div class="ticketCard">
+
+                <div id="ticketTexto"></div>
+
+                <div id="qrcode"></div>
+
+                <div class="qrTimerContainer">
+
+                    <svg class="progressRing" width="120" height="120">
+                        <circle class="progressBg" cx="60" cy="60" r="52"></circle>
+                        <circle class="progressCircle" cx="60" cy="60" r="52"></circle>
+                    </svg>
+
+                    <div id="qrTimer">00:30</div>
+
+                </div>
+
+                <p class="qrNote">El QR cambia cada 30 segundos para evitar fraudes.</p>
+
+                <button class="primaryBtn" onclick="descargarQR()">
+
+                    <i class="fa-solid fa-download"></i>
+
+                    Descargar QR
+
+                </button>
+
+            </div>
+
+            <div class="invoiceCard" id="invoiceCard"></div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<!-- ========================================
+     MIS COMPRAS
+======================================== -->
+
+<div class="modal" id="misComprasModal">
+
+    <div class="modalBox large">
+
+        <span class="closeModal" onclick="cerrarModal('misComprasModal')">✖</span>
+
+        <h2>Mis boletas</h2>
+
+        <div id="misCompras" class="misCompras"></div>
+
+    </div>
+
+</div>
+
+
+
+<script src="data.js"></script>
+<script src="planos.js"></script>
 <script src="script.js"></script>
 
 </body>
