@@ -1,0 +1,24 @@
+{
+  "name": "onticket-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "App móvil de OnTicket (Capacitor)",
+  "scripts": {
+    "copiar": "node scripts/copiar.mjs",
+    "sync": "npm run copiar && npx cap sync android",
+    "android": "npm run sync && npx cap open android",
+    "apk": "npm run sync && cd android && gradlew.bat assembleDebug && cd .. && node scripts/publicar-apk.mjs"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.6.9",
+    "@capacitor/core": "^7.6.9",
+    "@capacitor/splash-screen": "^7.0.5",
+    "@capacitor/status-bar": "^7.0.6",
+    "@fortawesome/fontawesome-free": "^6.7.2",
+    "firebase": "^10.14.1",
+    "qrcode-generator": "^2.0.4"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.6.9"
+  }
+}

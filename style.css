@@ -109,6 +109,7 @@ button{
     font-weight:700;
     font-size:15px;
     cursor:pointer;
+    text-decoration:none;
     transition:0.25s;
     box-shadow:0 8px 20px rgba(255,102,0,0.3);
 }
@@ -1092,6 +1093,156 @@ body.landingMode .header{
 
 
 /* ========================================
+   DESCARGA LA APP
+======================================== */
+
+.appPromo{
+
+    max-width:1240px;
+    width:calc(100% - 40px);
+    margin:30px auto 10px;
+    border-radius:28px;
+    padding:50px;
+    display:grid;
+    grid-template-columns:1.1fr 1fr;
+    gap:40px;
+    align-items:center;
+    color:white;
+    background:
+        radial-gradient(circle at 85% 30%, rgba(255,102,0,0.35), transparent 50%),
+        linear-gradient(135deg, #15151c, #0b0b10);
+    overflow:hidden;
+    scroll-margin-top:90px;
+}
+
+.appPromo h2{
+
+    font-size:clamp(28px, 4vw, 44px);
+    line-height:1.1;
+    margin:8px 0 14px;
+}
+
+.appPromoTexto > p{
+
+    opacity:0.8;
+    line-height:1.6;
+    max-width:520px;
+}
+
+.appFeatures{
+
+    list-style:none;
+    margin:22px 0 26px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+}
+
+.appFeatures li{
+
+    display:flex;
+    gap:12px;
+    align-items:center;
+}
+
+.appFeatures i{
+
+    width:34px;
+    height:34px;
+    border-radius:10px;
+    background:rgba(255,102,0,0.18);
+    color:#ff9a3d;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-shrink:0;
+}
+
+.appDescarga{
+
+    display:flex;
+    align-items:center;
+    gap:24px;
+    flex-wrap:wrap;
+}
+
+.appQR{
+
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:6px;
+}
+
+.appQR img{
+
+    width:120px;
+    height:120px;
+    border-radius:14px;
+    background:white;
+}
+
+.appQR small{
+
+    font-size:12px;
+    opacity:0.7;
+}
+
+.appNota{
+
+    margin-top:20px;
+    font-size:12.5px;
+    opacity:0.6 !important;
+}
+
+.appTelefonos{
+
+    position:relative;
+    height:520px;
+}
+
+.telefono{
+
+    position:absolute;
+    width:240px;
+    aspect-ratio:9 / 20;
+    border-radius:34px;
+    padding:8px;
+    background:#000;
+    box-shadow:0 30px 60px rgba(0,0,0,0.6), 0 0 0 2px #2c2c36;
+    left:50%;
+    top:50%;
+    transform:translate(-30%, -50%) rotate(4deg);
+    transition:transform 0.5s;
+}
+
+.telefono.atras{
+
+    transform:translate(-95%, -46%) rotate(-8deg) scale(0.9);
+    opacity:0.9;
+}
+
+.appPromo:hover .telefono{
+
+    transform:translate(-25%, -52%) rotate(2deg);
+}
+
+.appPromo:hover .telefono.atras{
+
+    transform:translate(-105%, -46%) rotate(-11deg) scale(0.9);
+}
+
+.telefono img{
+
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    border-radius:27px;
+}
+
+
+
+/* ========================================
    BENEFICIOS + FOOTER
 ======================================== */
 
@@ -1436,93 +1587,6 @@ body.landingMode .header{
     touch-action:none;
 }
 
-#planoSvg text{
-
-    font-family:var(--fontBody);
-    pointer-events:none;
-}
-
-.planoFondo{
-
-    fill:#12131a;
-}
-
-/* formas */
-.forma.escenario{ fill:#f4f4f6; }
-.escenarioText{ fill:#111; font:900 20px var(--fontTitle); letter-spacing:4px; }
-
-.forma.bloque{ fill:#2a2c35; }
-.bloqueText{ fill:#c9cad1; font:800 13px var(--fontTitle); letter-spacing:2px; }
-.bloqueText.small{ font-size:9px; }
-
-.forma.foh{ fill:#000; }
-.fohText{ fill:white; font:900 18px var(--fontTitle); }
-
-.forma.vacio{ fill:rgba(255,255,255,0.02); stroke:#3a3d47; stroke-dasharray:6 6; stroke-width:1.5; }
-.vacioText{ fill:#6b6e7a; font:700 11px var(--fontBody); letter-spacing:1px; }
-
-.forma.marcoZona{ fill:none; stroke:var(--c); stroke-width:2; }
-
-.filaText{ fill:#7c7f8c; font:700 10px var(--fontBody); }
-.miniText{ fill:#a0a3ad; font:800 10px var(--fontBody); letter-spacing:1px; }
-
-/* etiquetas laterales */
-.pill{ cursor:pointer; transition:opacity 0.3s; }
-.pill:hover rect{ filter:brightness(1.15); }
-.pillText{ fill:var(--t); font:900 11px var(--fontTitle); letter-spacing:1.5px; }
-
-/* franjas de palcos */
-.band{ transition:opacity 0.3s; }
-.band rect{ fill:var(--c); fill-opacity:0.14; stroke:var(--c); stroke-width:1.5; }
-.band rect.bandStrip{ fill-opacity:1; stroke:none; }
-.bandText{ fill:var(--t); font:900 9px var(--fontTitle); letter-spacing:1px; }
-
-/* sillas */
-.seat{ cursor:pointer; transition:opacity 0.3s; }
-.seat circle{ fill:var(--c); stroke:rgba(0,0,0,0.25); stroke-width:1; transition:0.15s; }
-.seat text{ fill:var(--t); font-weight:700; font-size:8.5px; }
-.seat:hover circle{ stroke:white; stroke-width:2.5; }
-
-.seat.sold{ cursor:not-allowed; }
-.seat.sold circle{ fill:#2c2e36; stroke:none; }
-.seat.sold text{ fill:#585b66; }
-
-.seat.sel circle{ fill:white; stroke:var(--brand); stroke-width:3.5; }
-.seat.sel text{ fill:var(--brand); font-weight:900; }
-
-/* palcos */
-.palco{ cursor:pointer; transition:opacity 0.3s; }
-.palco rect{ fill:var(--c); stroke:rgba(255,255,255,0.35); stroke-width:1.2; transition:0.15s; }
-.palco .palcoNum{ fill:var(--t); font:800 13px var(--fontTitle); }
-.palco .palcoNum.small{ font-size:10px; }
-.palco .palcoSub{ fill:var(--t); font-weight:700; font-size:8px; opacity:0.85; }
-.palco:hover rect{ filter:brightness(1.18); stroke:white; stroke-width:2; }
-
-.palco.ind rect{ fill:var(--ind); stroke:var(--c); stroke-width:3.5; filter:drop-shadow(0 0 6px rgba(16,185,129,0.65)); }
-.palco.ind .palcoNum,
-.palco.ind .palcoSub{ fill:white; }
-
-.palco.sold rect{ fill:#2c2e36; stroke:#3a3d47; filter:none; }
-.palco.sold .palcoNum,
-.palco.sold .palcoSub{ fill:#585b66; }
-
-.palco.sel rect{ fill:white; stroke:var(--brand); stroke-width:3.5; filter:none; }
-.palco.sel .palcoNum,
-.palco.sel .palcoSub{ fill:var(--brand); }
-
-/* zonas generales */
-.ga{ cursor:pointer; transition:opacity 0.3s; }
-.ga rect{ fill:var(--c); fill-opacity:0.85; stroke:rgba(255,255,255,0.3); stroke-width:1.5; stroke-dasharray:5 4; }
-.ga:hover rect{ fill-opacity:1; stroke:white; }
-.gaText{ fill:var(--t); font:900 20px var(--fontTitle); letter-spacing:3px; }
-.gaText.small{ font-size:18px; letter-spacing:0; }
-.gaSub{ fill:var(--t); font-weight:700; font-size:10px; }
-.ga.sel rect{ stroke:var(--brand); stroke-width:4; stroke-dasharray:none; }
-.ga.sold rect{ fill:#2c2e36; }
-
-/* filtros */
-.dim{ opacity:0.12; pointer-events:none; }
-.oculto{ opacity:0.04; pointer-events:none; }
 
 .zoomControls{
 
@@ -3266,6 +3330,25 @@ body.modalOpen .toastZone{
     .cartItemsTxt{
 
         max-width:160px;
+    }
+}
+
+@media(max-width:900px){
+
+    .appPromo{
+
+        grid-template-columns:1fr;
+        padding:30px 22px;
+    }
+
+    .appTelefonos{
+
+        height:400px;
+    }
+
+    .telefono{
+
+        width:180px;
     }
 }
 

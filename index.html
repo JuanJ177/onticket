@@ -23,7 +23,9 @@
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
     >
 
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=3">
+
+    <link rel="stylesheet" href="planos.css?v=3">
 
 </head>
 
@@ -106,6 +108,11 @@
         <a href="#" onclick="abrirMisCompras(); return false;">
             <i class="fa-solid fa-ticket"></i>
             Mis boletas
+        </a>
+
+        <a href="#" onclick="irASeccion('descargaApp'); return false;">
+            <i class="fa-solid fa-mobile-screen-button"></i>
+            App
         </a>
 
         <a href="#" onclick="abrirAyuda(); return false;">
@@ -243,6 +250,60 @@
 
 
 
+    <!-- DESCARGA LA APP -->
+
+    <section class="appPromo" id="descargaApp">
+
+        <div class="appPromoTexto">
+
+            <span class="sectionKicker">App móvil · Android</span>
+
+            <h2>Lleva tus experiencias <span class="gradText">en el bolsillo</span></h2>
+
+            <p>
+                Compra boletas desde tu celular y entra al evento con tu QR dinámico,
+                incluso sin internet. Tu misma cuenta de la web, tus mismas boletas.
+            </p>
+
+            <ul class="appFeatures">
+                <li><i class="fa-solid fa-ticket"></i> Compra en segundos con planos táctiles</li>
+                <li><i class="fa-solid fa-qrcode"></i> QR que cambia cada 30 s: adiós a las boletas falsas</li>
+                <li><i class="fa-solid fa-wifi"></i> Tus boletas disponibles sin conexión</li>
+                <li><i class="fa-solid fa-rotate"></i> Sincronizada con la web en tiempo real</li>
+            </ul>
+
+            <div class="appDescarga">
+
+                <a class="primaryBtn big" href="descargas/OnTicket.apk" download="OnTicket.apk">
+                    <i class="fa-brands fa-android"></i> Descargar para Android
+                </a>
+
+                <div class="appQR">
+                    <img id="qrDescarga" alt="QR para descargar la app">
+                    <small>Escanea con tu celular</small>
+                </div>
+
+            </div>
+
+            <p class="appNota">
+                <i class="fa-solid fa-circle-info"></i>
+                Al instalar, Android pedirá permitir "instalar apps de origen desconocido". Es normal: la app aún no está en Play Store.
+            </p>
+
+        </div>
+
+        <div class="appTelefonos">
+
+            <div class="telefono atras"><img src="img/app-plano.jpg" alt="Plano en la app"></div>
+
+            <div class="telefono"><img src="img/app-inicio.jpg" alt="Inicio de la app"></div>
+
+        </div>
+
+    </section>
+
+
+
     <!-- BENEFICIOS -->
 
     <section class="benefits">
@@ -361,7 +422,7 @@
 
             <div class="planoWrap" id="planoWrap">
 
-                <svg id="planoSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+                <svg id="planoSvg" class="planoSvg" xmlns="http://www.w3.org/2000/svg"></svg>
 
                 <div class="zoomControls">
 
@@ -924,9 +985,17 @@
 
 
 
-<script src="data.js"></script>
-<script src="planos.js"></script>
-<script src="script.js"></script>
+<!-- Firebase (cuentas, compras y sillas vendidas compartidas con la app) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<script src="firebase-config.js?v=3"></script>
+<script src="data.js?v=3"></script>
+<script src="planos.js?v=3"></script>
+<script src="core.js?v=3"></script>
+<script src="db.js?v=3"></script>
+<script src="script.js?v=3"></script>
 
 </body>
 </html>

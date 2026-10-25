@@ -1,0 +1,44 @@
+rules_version = '2';
+
+// Reglas de seguridad de OnTicket
+// Copiar en Firebase Console → Firestore Database → Reglas → Publicar
+
+service cloud.firestore {
+
+  match /databases/{database}/documents {
+
+    function logueado() {
+      return request.auth != null;
+    }
+
+    function esAdmin() {
+      return logueado() &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Perfil: cada quien ve y edita el suyo; nadie se puede volver admin solo
+    match /usuarios/{uid} {
+      allow read: if logueado() && (request.auth.uid == uid || esAdmin());
+      allow create: if logueado() && request.auth.uid == uid && request.resource.data.role == 'user';
+      allow update: if logueado() && request.auth.uid == uid && request.resource.data.role == resource.data.role;
+    }
+
+    // Compras: cada usuario ve las suyas; el admin ve todas
+    match /compras/{codigo} {
+      allow read: if logueado() && (resource.data.uid == request.auth.uid || esAdmin());
+      allow create: if logueado() && request.resource.data.uid == request.auth.uid;
+      allow delete: if logueado() && (resource.data.uid == request.auth.uid || esAdmin());
+    }
+
+    // Sillas vendidas por evento: todos las ven (para pintar el plano)
+    match /ventas/{eventoId} {
+      allow read: if true;
+      allow write: if logueado();
+    }
+
+    // Consecutivo de facturas electrónicas
+    match /contadores/{id} {
+      allow read, write: if logueado();
+    }
+  }
+}

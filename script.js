@@ -1,44 +1,9 @@
 /* ========================================
-   UTILIDADES
+   WEB DE ONTICKET
+   Requiere: data.js, planos.js, core.js, db.js
 ======================================== */
 
 const $ = id => document.getElementById(id);
-
-function fmt(valor){
-
-    return "$" + Math.round(valor).toLocaleString("es-CO");
-}
-
-// Evita inyectar HTML con datos escritos por el usuario
-function esc(texto){
-
-    return String(texto ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#39;");
-}
-
-// Número pseudoaleatorio estable (para simular sillas ya vendidas)
-function azar(texto){
-
-    let h = 2166136261;
-
-    for(let i = 0; i < texto.length; i++){
-
-        h ^= texto.charCodeAt(i);
-
-        h = Math.imul(h, 16777619);
-    }
-
-    return ((h >>> 0) % 10000) / 10000;
-}
-
-function clamp(v, min, max){
-
-    return Math.max(min, Math.min(max, v));
-}
 
 function toast(mensaje, icono = "fa-circle-check"){
 
@@ -79,9 +44,12 @@ const tooltip = $("planoTooltip");
 let currentUser = null;
 let authMode = "login";
 let pendienteCheckout = false;
+let comprasUsuario = [];
 
 let eventoActual = null;
 let planoActual = null;
+let estadoVenta = null;
+let dejarDeEscuchar = null;
 let pisoActual = 0;
 let zonasActivas = new Set();
 let precioMaximo = Infinity;
@@ -90,6 +58,7 @@ let zoom = { s:1, x:0, y:0 };
 let carrito = [];
 let pasoActual = 1;
 let metodoPago = "";
+let pagando = false;
 
 let ciudadActiva = "Todas";
 let categoriaActiva = "Todas";
@@ -97,86 +66,8 @@ let categoriaActiva = "Todas";
 let slideActual = 0;
 let intervaloSlides;
 
-let tiempoRestante = 30;
 let intervaloQR;
 let compraEnPantalla = null;
-
-
-
-/* ========================================
-   USUARIOS (localStorage)
-======================================== */
-
-function getUsers(){
-
-    return JSON.parse(localStorage.getItem("users")) || [];
-}
-
-function saveUsers(users){
-
-    localStorage.setItem("users", JSON.stringify(users));
-}
-
-function guardarSesion(usuario){
-
-    if(localStorage.getItem("currentUser")){
-
-        localStorage.setItem("currentUser", JSON.stringify(usuario));
-
-    }else{
-
-        sessionStorage.setItem("currentUser", JSON.stringify(usuario));
-    }
-}
-
-function actualizarComprasUsuario(cambio){
-
-    let users = getUsers();
-
-    users = users.map(user => {
-
-        if(user.email === currentUser.email){
-
-            user.compras = user.compras || [];
-
-            cambio(user);
-
-            currentUser = user;
-        }
-
-        return user;
-    });
-
-    saveUsers(users);
-
-    guardarSesion(currentUser);
-}
-
-
-
-/* ========================================
-   ADMIN POR DEFECTO
-======================================== */
-
-function inicializarAdmin(){
-
-    let users = getUsers();
-
-    if(!users.find(u => u.role === "admin")){
-
-        users.push({
-            name: "Administrador",
-            email: "admin@onticket.com",
-            password: "123456",
-            role: "admin",
-            compras: []
-        });
-
-        saveUsers(users);
-    }
-}
-
-inicializarAdmin();
 
 
 
@@ -221,62 +112,6 @@ function irASeccion(id){
     }
 
     setTimeout(() => $(id).scrollIntoView({ behavior:"smooth" }), 50);
-}
-
-
-
-/* ========================================
-   HELPERS DE EVENTOS
-======================================== */
-
-function getEvento(id){
-
-    return EVENTOS.find(e => e.id === id);
-}
-
-function lugarDe(evento){
-
-    return LUGARES[evento.lugar];
-}
-
-function planoDe(evento){
-
-    return PLANOS[lugarDe(evento).plano];
-}
-
-function precioZona(evento, zonaId){
-
-    const zona = planoDe(evento).zonas[zonaId];
-
-    return (evento.precios && evento.precios[zonaId]) || zona.precio;
-}
-
-// precio por persona (para comparar asientos, palcos y general)
-function precioPersona(evento, zonaId){
-
-    const zona = planoDe(evento).zonas[zonaId];
-
-    if(zona.tipo === "palco"){
-
-        return zona.precioPuesto || precioZona(evento, zonaId) / 10;
-    }
-
-    return precioZona(evento, zonaId);
-}
-
-function precioDesde(evento){
-
-    return Math.min(...Object.keys(planoDe(evento).zonas).map(z => precioPersona(evento, z)));
-}
-
-function urlMapaEmbed(lugar){
-
-    return `https://maps.google.com/maps?q=${encodeURIComponent(lugar.mapa)}&z=15&output=embed`;
-}
-
-function urlComoLlegar(lugar){
-
-    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(lugar.mapa)}`;
 }
 
 
@@ -603,6 +438,8 @@ function abrirEvento(id){
 
     planoActual = planoDe(evento);
 
+    estadoVenta = crearEstadoVenta(evento);
+
     pisoActual = 0;
 
     zonasActivas = new Set();
@@ -611,11 +448,31 @@ function abrirEvento(id){
 
     renderEventoHero();
 
-    renderSidebar();
-
     prepararFiltrosPlano();
 
-    renderPlano();
+    // sillas vendidas en tiempo real
+    if(dejarDeEscuchar) dejarDeEscuchar();
+
+    dejarDeEscuchar = DB.escucharVentas(evento.id, ventas => {
+
+        estadoVenta = crearEstadoVenta(evento, ventas);
+
+        // si alguien compró algo que estaba en mi carrito, se quita
+        const antes = carrito.length;
+
+        carrito = carrito.filter(i => !i.ids.some(id => estadoVenta.idGuardado(id)));
+
+        if(carrito.length < antes){
+
+            toast("Una de tus ubicaciones acaba de ser vendida", "fa-triangle-exclamation");
+
+            renderCartBar();
+        }
+
+        renderSidebar();
+
+        renderPlano();
+    });
 
     mostrarPagina(eventoPage);
 }
@@ -671,18 +528,63 @@ function renderEventoHero(){
             </div>
 
         </div>`;
+
+
+    // ----- mapa -----
+    $("mapaEvento").innerHTML = `
+
+        <div class="mapFrame">
+            <iframe
+                src="${urlMapaEmbed(lugar)}"
+                loading="lazy"
+                referrerpolicy="no-referrer-when-downgrade"
+                title="Mapa de ${lugar.nombre}"
+            ></iframe>
+        </div>
+
+        <div class="mapInfo">
+            <b>${lugar.nombre}</b>
+            <span>${lugar.direccion}</span>
+            <span>${lugar.ciudad}, ${lugar.departamento}</span>
+        </div>
+
+        <div class="mapBtns">
+
+            <a class="ghostBtn" href="${urlComoLlegar(lugar)}" target="_blank" rel="noopener">
+                <i class="fa-brands fa-google"></i> Cómo llegar
+            </a>
+
+            <a class="ghostBtn" href="${urlWaze(lugar)}" target="_blank" rel="noopener">
+                <i class="fa-brands fa-waze"></i> Waze
+            </a>
+
+        </div>`;
+
+
+    // ----- video -----
+    const video = $("eventVideo");
+
+    if(ev.video){
+
+        $("videoCard").style.display = "block";
+
+        video.src = ev.video;
+
+    }else{
+
+        $("videoCard").style.display = "none";
+
+        video.removeAttribute("src");
+    }
 }
 
 function renderSidebar(){
 
     const ev = eventoActual;
 
-    const lugar = lugarDe(ev);
-
-    // ----- localidades -----
     $("zonasLista").innerHTML = Object.entries(planoActual.zonas).map(([id, z]) => {
 
-        const disp = disponiblesZona(id);
+        const disp = estadoVenta.disponiblesZona(id);
 
         let precioTxt = fmt(precioZona(ev, id));
 
@@ -718,158 +620,6 @@ function renderSidebar(){
         <i class="fa-solid fa-circle-info"></i>
         Al valor de la boleta se suma el <b>cargo por servicio (${CONFIG.feeServicio * 100}%)</b>
         y el <b>IVA (${CONFIG.ivaServicio * 100}%) sobre el servicio</b>. Verás el desglose completo antes de pagar.`;
-
-
-    // ----- mapa -----
-    $("mapaEvento").innerHTML = `
-
-        <div class="mapFrame">
-            <iframe
-                src="${urlMapaEmbed(lugar)}"
-                loading="lazy"
-                referrerpolicy="no-referrer-when-downgrade"
-                title="Mapa de ${lugar.nombre}"
-            ></iframe>
-        </div>
-
-        <div class="mapInfo">
-            <b>${lugar.nombre}</b>
-            <span>${lugar.direccion}</span>
-            <span>${lugar.ciudad}, ${lugar.departamento}</span>
-        </div>
-
-        <div class="mapBtns">
-
-            <a class="ghostBtn" href="${urlComoLlegar(lugar)}" target="_blank" rel="noopener">
-                <i class="fa-brands fa-google"></i> Cómo llegar
-            </a>
-
-            <a class="ghostBtn" href="https://waze.com/ul?q=${encodeURIComponent(lugar.mapa)}&navigate=yes" target="_blank" rel="noopener">
-                <i class="fa-brands fa-waze"></i> Waze
-            </a>
-
-        </div>`;
-
-
-    // ----- video -----
-    const video = $("eventVideo");
-
-    if(ev.video){
-
-        $("videoCard").style.display = "block";
-
-        video.src = ev.video;
-
-    }else{
-
-        $("videoCard").style.display = "none";
-
-        video.removeAttribute("src");
-    }
-}
-
-
-
-/* ========================================
-   ESTADO DE VENTA (vendidos)
-======================================== */
-
-let cacheVendidos = {};
-
-function getVentas(eventoId){
-
-    const v = JSON.parse(localStorage.getItem("ventas_" + eventoId)) || {};
-
-    return { ids: v.ids || [], general: v.general || {} };
-}
-
-function saveVentas(eventoId, ventas){
-
-    localStorage.setItem("ventas_" + eventoId, JSON.stringify(ventas));
-
-    delete cacheVendidos[eventoId];
-}
-
-// ids vendidos por compras reales (se guarda en memoria para no leer localStorage en cada silla)
-function vendidosGuardados(eventoId){
-
-    if(!cacheVendidos[eventoId]){
-
-        cacheVendidos[eventoId] = new Set(getVentas(eventoId).ids);
-    }
-
-    return cacheVendidos[eventoId];
-}
-
-function idVendido(id, tasa){
-
-    return azar(eventoActual.id + "|" + id) < tasa || vendidosGuardados(eventoActual.id).has(id);
-}
-
-function asientoVendido(a){
-
-    return idVendido(a.id, 0.2);
-}
-
-function puestosPalco(p){
-
-    const lista = [];
-
-    for(let n = 1; n <= p.capacidad; n++){
-
-        const id = `${p.id}-${n}`;
-
-        lista.push({ id, n, vendido: idVendido(id, 0.35) });
-    }
-
-    return lista;
-}
-
-function palcoVendido(p){
-
-    if(p.individual){
-
-        return puestosPalco(p).every(x => x.vendido);
-    }
-
-    return idVendido(p.id, 0.3);
-}
-
-function generalDisponible(g){
-
-    const zona = planoActual.zonas[g.zona];
-
-    const capacidad = g.capacidad || zona.capacidad;
-
-    const vendidos = Math.floor(capacidad * 0.55 * azar(eventoActual.id + "|" + g.id)) + (getVentas(eventoActual.id).general[g.id] || 0);
-
-    return Math.max(0, capacidad - vendidos);
-}
-
-function disponiblesZona(zonaId){
-
-    let total = 0;
-
-    planoActual.pisos.forEach(piso => {
-
-        piso.asientos.filter(a => a.zona === zonaId).forEach(a => { if(!asientoVendido(a)) total++; });
-
-        piso.palcos.filter(p => p.zona === zonaId).forEach(p => {
-
-            if(p.individual){
-
-                total += puestosPalco(p).filter(x => !x.vendido).length;
-
-            }else if(!palcoVendido(p)){
-
-                total += p.capacidad;
-            }
-        });
-
-        piso.generales.filter(g => g.zona === zonaId).forEach(g => total += generalDisponible(g));
-    });
-
-    return total;
 }
 
 
@@ -980,10 +730,7 @@ function enfocarZona(id){
 
 function irAPisoDeZona(id){
 
-    const i = planoActual.pisos.findIndex(p =>
-        p.asientos.some(a => a.zona === id) ||
-        p.palcos.some(a => a.zona === id) ||
-        p.generales.some(a => a.zona === id));
+    const i = pisoDeZona(planoActual, id);
 
     if(i >= 0 && i !== pisoActual) cambiarPiso(i);
 }
@@ -1008,23 +755,11 @@ function cambiarPrecioMax(){
     renderPlano();
 }
 
-function zonaVisible(zonaId){
-
-    const pasaZona = zonasActivas.size === 0 || zonasActivas.has(zonaId);
-
-    return pasaZona && precioPersona(eventoActual, zonaId) <= precioMaximo;
-}
-
 
 
 /* ========================================
-   DIBUJAR EL PLANO (SVG)
+   DIBUJAR EL PLANO
 ======================================== */
-
-function textoVertical(x, y, texto, cls){
-
-    return `<text x="${x}" y="${y}" class="${cls}" transform="rotate(-90 ${x} ${y})" text-anchor="middle" dominant-baseline="middle">${texto}</text>`;
-}
 
 function renderPlano(){
 
@@ -1032,163 +767,14 @@ function renderPlano(){
 
     const piso = planoActual.pisos[pisoActual];
 
-    const zonas = planoActual.zonas;
-
-    const soloDisp = $("soloDisponibles").checked;
-
-    const soloInd = $("soloIndividuales").checked;
-
     svg.setAttribute("viewBox", `0 0 ${piso.w} ${piso.h}`);
 
-    let html = `<rect class="planoFondo" x="0" y="0" width="${piso.w}" height="${piso.h}" rx="18"/>`;
-
-    html += `<g id="planoG">`;
-
-
-    // ----- formas -----
-    piso.formas.forEach(f => {
-
-        if(f.t === "rect"){
-
-            const color = f.zona ? `style="--c:${zonas[f.zona].color}"` : "";
-
-            html += `<rect x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="${f.rx || 0}" class="forma ${f.cls}" ${color}/>`;
-
-            if(f.texto){
-
-                const cx = f.x + f.w / 2, cy = f.y + f.h / 2;
-
-                const cls = `formaText ${f.cls}Text ${f.small ? "small" : ""}`;
-
-                html += f.vertical
-                    ? textoVertical(cx, cy, f.texto, cls)
-                    : `<text x="${cx}" y="${cy}" class="${cls}" text-anchor="middle" dominant-baseline="middle">${f.texto}</text>`;
-            }
-
-        }else if(f.t === "text"){
-
-            html += `<text x="${f.x}" y="${f.y}" class="${f.cls}" text-anchor="middle">${f.texto}</text>`;
-
-        }else if(f.t === "pill"){
-
-            const z = zonas[f.zona];
-
-            const dim = zonaVisible(f.zona) ? "" : "dim";
-
-            html += `<g class="pill ${dim}" data-kind="zona" data-zona="${f.zona}" style="--t:${z.texto}">
-                <rect x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="12" fill="${z.color}"/>
-                ${textoVertical(f.x + f.w / 2, f.y + f.h / 2, f.texto, "pillText")}
-            </g>`;
-
-        }else if(f.t === "band"){
-
-            const z = zonas[f.zona];
-
-            const dim = zonaVisible(f.zona) ? "" : "dim";
-
-            html += `<g class="band ${dim}" style="--c:${z.color};--t:${z.texto}">
-                <rect x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="12"/>
-                <rect x="${f.x}" y="${f.y}" width="22" height="${f.h}" rx="10" class="bandStrip"/>
-                ${textoVertical(f.x + 11, f.y + f.h / 2, f.texto.replace("PALCOS ", ""), "bandText")}
-            </g>`;
-        }
+    svg.innerHTML = planoSVG(eventoActual, pisoActual, estadoVenta, carrito, {
+        zonas: zonasActivas,
+        precioMax: precioMaximo,
+        soloDisp: $("soloDisponibles").checked,
+        soloInd: $("soloIndividuales").checked
     });
-
-
-    // ----- zonas generales -----
-    piso.generales.forEach(g => {
-
-        const z = zonas[g.zona];
-
-        const disp = generalDisponible(g);
-
-        const enCarro = carrito.find(i => i.key === g.id);
-
-        const clases = [
-            "ga",
-            zonaVisible(g.zona) && !soloInd ? "" : "dim",
-            disp ? "" : "sold",
-            enCarro ? "sel" : ""
-        ].join(" ");
-
-        const tip = `<b>${z.nombre}${g.texto.length === 1 ? " " + g.texto : ""}</b><br>${fmt(precioZona(eventoActual, g.zona))} por persona<br>${disp} disponibles`;
-
-        const grande = g.w > 120;
-
-        html += `<g class="${clases}" data-kind="ga" data-id="${g.id}" data-tip="${esc(tip)}" style="--c:${z.color};--t:${z.texto}">
-            <rect x="${g.x}" y="${g.y}" width="${g.w}" height="${g.h}" rx="12"/>
-            <text x="${g.x + g.w / 2}" y="${g.y + g.h / 2 - (grande ? 8 : 0)}" class="gaText ${grande ? "" : "small"}" text-anchor="middle" dominant-baseline="middle">${g.texto}</text>
-            ${grande ? `<text x="${g.x + g.w / 2}" y="${g.y + g.h / 2 + 16}" class="gaSub" text-anchor="middle">${enCarro ? enCarro.cantidad + " en tu compra" : fmt(precioZona(eventoActual, g.zona)) + " · " + disp + " disp."}</text>` : ""}
-        </g>`;
-    });
-
-
-    // ----- palcos -----
-    piso.palcos.forEach(p => {
-
-        const z = zonas[p.zona];
-
-        const vendido = palcoVendido(p);
-
-        const puestos = p.individual ? puestosPalco(p) : [];
-
-        const libres = puestos.filter(x => !x.vendido).length;
-
-        const enCarro = carrito.filter(i => i.palco === p.id).length;
-
-        const visible = zonaVisible(p.zona) && (!soloInd || p.individual);
-
-        const clases = [
-            "palco",
-            p.individual ? "ind" : "",
-            visible ? "" : "dim",
-            vendido ? "sold" : "",
-            vendido && soloDisp ? "oculto" : "",
-            enCarro ? "sel" : ""
-        ].join(" ");
-
-        const tip = p.individual
-            ? `<b>${z.nombre} · Palco ${p.num}</b><br><span class="tipInd">Palco individual · venta por puesto</span><br>${fmt(precioPersona(eventoActual, p.zona))} por puesto · ${libres}/10 libres`
-            : `<b>${z.nombre} · Palco ${p.num}</b><br>Palco completo · 10 personas<br>${fmt(precioZona(eventoActual, p.zona))}${vendido ? " · Vendido" : ""}`;
-
-        const chico = p.w < 40;
-
-        html += `<g class="${clases}" data-kind="palco" data-id="${p.id}" data-tip="${esc(tip)}" style="--c:${z.color};--t:${z.texto}">
-            <rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="${chico ? 4 : 7}"/>
-            <text x="${p.x + p.w / 2}" y="${p.y + p.h / 2 - (chico ? 0 : 5)}" class="palcoNum ${chico ? "small" : ""}" text-anchor="middle" dominant-baseline="middle">${p.num}</text>
-            ${chico ? "" : `<text x="${p.x + p.w / 2}" y="${p.y + p.h / 2 + 9}" class="palcoSub" text-anchor="middle" dominant-baseline="middle">${p.individual ? (enCarro ? enCarro + " tuyos" : libres + "/10") : (enCarro ? "tuyo" : "x10")}</text>`}
-        </g>`;
-    });
-
-
-    // ----- asientos -----
-    const enCarrito = new Set(carrito.map(i => i.key));
-
-    piso.asientos.forEach(a => {
-
-        const z = zonas[a.zona];
-
-        const vendido = asientoVendido(a);
-
-        const clases = [
-            "seat",
-            zonaVisible(a.zona) && !soloInd ? "" : "dim",
-            vendido ? "sold" : "",
-            vendido && soloDisp ? "oculto" : "",
-            enCarrito.has(a.id) ? "sel" : ""
-        ].join(" ");
-
-        const tip = `<b>${z.nombre}</b><br>Fila ${a.fila} · Silla ${a.num}<br>${vendido ? "Vendido" : fmt(precioZona(eventoActual, a.zona))}`;
-
-        html += `<g class="${clases}" data-kind="seat" data-id="${a.id}" data-tip="${esc(tip)}" style="--c:${z.color};--t:${z.texto}">
-            <circle cx="${a.x}" cy="${a.y}" r="10"/>
-            <text x="${a.x}" y="${a.y + 0.5}" text-anchor="middle" dominant-baseline="middle">${a.num}</text>
-        </g>`;
-    });
-
-    html += `</g>`;
-
-    svg.innerHTML = html;
 
     aplicarZoom();
 }
@@ -1198,20 +784,6 @@ function renderPlano(){
 /* ========================================
    INTERACCIÓN CON EL PLANO
 ======================================== */
-
-function buscarElemento(kind, id){
-
-    for(const piso of planoActual.pisos){
-
-        const lista = kind === "seat" ? piso.asientos : kind === "palco" ? piso.palcos : piso.generales;
-
-        const el = lista.find(x => x.id === id);
-
-        if(el) return el;
-    }
-
-    return null;
-}
 
 let arrastre = null;
 let seArrastro = false;
@@ -1238,7 +810,7 @@ svg.addEventListener("click", e => {
         return;
     }
 
-    const el = buscarElemento(kind, g.dataset.id);
+    const el = buscarElementoPlano(planoActual, kind, g.dataset.id);
 
     if(kind === "seat") clickAsiento(el);
 
@@ -1402,14 +974,12 @@ window.addEventListener("pointerup", () => arrastre = null);
 
 function clickAsiento(a){
 
-    if(asientoVendido(a)){
+    if(estadoVenta.asientoVendido(a)){
 
         toast("Esta silla ya fue vendida", "fa-circle-xmark");
 
         return;
     }
-
-    const z = planoActual.zonas[a.zona];
 
     if(carrito.find(i => i.key === a.id)){
 
@@ -1418,17 +988,7 @@ function clickAsiento(a){
         return;
     }
 
-    agregarAlCarrito({
-        key: a.id,
-        tipo: "asiento",
-        zona: a.zona,
-        etiqueta: `${z.nombre} · Fila ${a.fila} · Silla ${a.num}`,
-        corto: `${z.nombre} ${a.fila}${a.num}`,
-        precio: precioZona(eventoActual, a.zona),
-        cantidad: 1,
-        personas: 1,
-        ids: [a.id]
-    });
+    agregarAlCarrito(itemAsiento(eventoActual, a));
 }
 
 
@@ -1454,7 +1014,7 @@ function renderPalcoModal(){
 
     const z = planoActual.zonas[p.zona];
 
-    const vendido = palcoVendido(p);
+    const vendido = estadoVenta.palcoVendido(p);
 
     const total = precioZona(eventoActual, p.zona);
 
@@ -1469,7 +1029,7 @@ function renderPalcoModal(){
 
     if(p.individual){
 
-        const puestos = puestosPalco(p);
+        const puestos = estadoVenta.puestosPalco(p);
 
         const precio = precioPersona(eventoActual, p.zona);
 
@@ -1489,7 +1049,7 @@ function renderPalcoModal(){
                 return `<button class="silla ${x.vendido ? "sold" : ""} ${sel ? "sel" : ""}"
                     style="left:calc(50% + ${Math.cos(ang) * 112}px); top:calc(50% + ${Math.sin(ang) * 112}px)"
                     ${x.vendido ? "disabled" : ""}
-                    onclick="togglePuesto('${x.id}', ${x.n})">${x.n}</button>`;
+                    onclick="togglePuesto(${x.n})">${x.n}</button>`;
 
             }).join("")}
         </div>
@@ -1538,30 +1098,19 @@ function renderPalcoModal(){
     $("palcoContenido").innerHTML = html;
 }
 
-function togglePuesto(id, n){
+function togglePuesto(n){
 
     const p = palcoAbierto;
 
-    const z = planoActual.zonas[p.zona];
+    const puesto = estadoVenta.puestosPalco(p).find(x => x.n === n);
 
-    if(carrito.find(i => i.key === id)){
+    if(carrito.find(i => i.key === puesto.id)){
 
-        quitarDelCarrito(id);
+        quitarDelCarrito(puesto.id);
 
     }else{
 
-        agregarAlCarrito({
-            key: id,
-            tipo: "puesto",
-            palco: p.id,
-            zona: p.zona,
-            etiqueta: `${z.nombre} · Palco ${p.num} · Puesto ${n}`,
-            corto: `P${p.num}-${n}`,
-            precio: precioPersona(eventoActual, p.zona),
-            cantidad: 1,
-            personas: 1,
-            ids: [id]
-        });
+        agregarAlCarrito(itemPuesto(eventoActual, p, puesto));
     }
 
     renderPalcoModal();
@@ -1569,22 +1118,7 @@ function togglePuesto(id, n){
 
 function agregarPalcoCompleto(){
 
-    const p = palcoAbierto;
-
-    const z = planoActual.zonas[p.zona];
-
-    agregarAlCarrito({
-        key: p.id,
-        tipo: "palco",
-        palco: p.id,
-        zona: p.zona,
-        etiqueta: `${z.nombre} · Palco ${p.num} (10 personas)`,
-        corto: `Palco ${p.num}`,
-        precio: precioZona(eventoActual, p.zona),
-        cantidad: 1,
-        personas: 10,
-        ids: [p.id]
-    });
+    agregarAlCarrito(itemPalco(eventoActual, palcoAbierto));
 
     cerrarModal("palcoModal");
 }
@@ -1617,7 +1151,7 @@ function renderGeneralModal(){
 
     const z = planoActual.zonas[g.zona];
 
-    const disp = generalDisponible(g);
+    const disp = estadoVenta.generalDisponible(g);
 
     const precio = precioZona(eventoActual, g.zona);
 
@@ -1655,30 +1189,16 @@ function renderGeneralModal(){
 
 function cambiarCantidad(d){
 
-    cantidadGeneral = clamp(cantidadGeneral + d, 1, Math.min(CONFIG.maxGeneral, generalDisponible(generalAbierta)));
+    cantidadGeneral = clamp(cantidadGeneral + d, 1, Math.min(CONFIG.maxGeneral, estadoVenta.generalDisponible(generalAbierta)));
 
     renderGeneralModal();
 }
 
 function agregarGeneral(){
 
-    const g = generalAbierta;
+    carrito = carrito.filter(i => i.key !== generalAbierta.id);
 
-    const z = planoActual.zonas[g.zona];
-
-    carrito = carrito.filter(i => i.key !== g.id);
-
-    agregarAlCarrito({
-        key: g.id,
-        tipo: "general",
-        zona: g.zona,
-        etiqueta: `${z.nombre}${g.texto.length === 1 ? " " + g.texto : ""} · ${cantidadGeneral} persona${cantidadGeneral > 1 ? "s" : ""}`,
-        corto: `${z.nombre} x${cantidadGeneral}`,
-        precio: precioZona(eventoActual, g.zona),
-        cantidad: cantidadGeneral,
-        personas: cantidadGeneral,
-        ids: []
-    });
+    agregarAlCarrito(itemGeneral(eventoActual, generalAbierta, cantidadGeneral));
 
     cerrarModal("generalModal");
 }
@@ -1690,8 +1210,6 @@ function agregarGeneral(){
 ======================================== */
 
 function agregarAlCarrito(item){
-
-    item.eventoId = eventoActual.id;
 
     carrito.push(item);
 
@@ -1733,19 +1251,6 @@ function actualizarTrasCambio(animar){
             renderCheckout();
         }
     }
-}
-
-function calcularCostos(items){
-
-    const subtotal = items.reduce((s, i) => s + i.precio * i.cantidad, 0);
-
-    const servicio = Math.round(subtotal * CONFIG.feeServicio);
-
-    const iva = Math.round(servicio * CONFIG.ivaServicio);
-
-    const personas = items.reduce((s, i) => s + (i.personas || 1) * (i.tipo === "general" ? 1 : i.cantidad), 0);
-
-    return { subtotal, servicio, iva, total: subtotal + servicio + iva, personas };
 }
 
 function renderCartBar(animar){
@@ -1853,22 +1358,16 @@ function renderCheckout(){
             <span><i class="fa-solid fa-location-dot"></i> ${lugar.nombre}, ${lugar.ciudad}</span>
         </div>`;
 
-    $("checkoutItems").innerHTML = carrito.map(i => {
-
-        const z = planoActual.zonas[i.zona];
-
-        return `
+    $("checkoutItems").innerHTML = carrito.map(i => `
         <div class="checkoutItem">
-            <i class="zonaColor" style="background:${z.color}"></i>
+            <i class="zonaColor" style="background:${planoActual.zonas[i.zona].color}"></i>
             <div>
                 <b>${i.etiqueta}</b>
-                <small>${i.tipo === "palco" ? "Palco completo" : i.tipo === "puesto" ? "Palco individual" : i.tipo === "general" ? fmt(i.precio) + " c/u" : "Silla numerada"}</small>
+                <small>${tipoItemTexto(i)}</small>
             </div>
             <span>${fmt(i.precio * i.cantidad)}</span>
             <button onclick="quitarDelCarrito('${i.key}')" title="Quitar"><i class="fa-solid fa-xmark"></i></button>
-        </div>`;
-
-    }).join("");
+        </div>`).join("");
 
     renderDesglose();
 
@@ -1876,8 +1375,11 @@ function renderCheckout(){
 
     const c = calcularCostos(carrito);
 
+    $("btnSiguiente").disabled = pagando;
+
     $("btnSiguiente").innerHTML =
-        pasoActual === 1 ? 'Continuar <i class="fa-solid fa-arrow-right"></i>'
+        pagando ? '<i class="fa-solid fa-spinner fa-spin"></i> Procesando...'
+        : pasoActual === 1 ? 'Continuar <i class="fa-solid fa-arrow-right"></i>'
         : pasoActual === 2 ? 'Ir a pagar <i class="fa-solid fa-arrow-right"></i>'
         : `<i class="fa-solid fa-lock"></i> Pagar ${fmt(c.total)}`;
 }
@@ -1932,20 +1434,6 @@ function cambioTipoPersona(){
     if(juridica) $("feTipoDoc").value = "NIT";
 
     calcularDV();
-}
-
-// Dígito de verificación del NIT (algoritmo DIAN)
-function digitoVerificacion(nit){
-
-    const pesos = [3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67, 71];
-
-    const digitos = nit.replace(/\D/g, "").split("").reverse();
-
-    const suma = digitos.reduce((s, d, i) => s + Number(d) * (pesos[i] || 0), 0);
-
-    const r = suma % 11;
-
-    return r > 1 ? 11 - r : r;
 }
 
 function calcularDV(){
@@ -2019,26 +1507,6 @@ function datosFactura(){
     };
 }
 
-// CUFE simulado: hash SHA-384 de los datos de la factura (como lo exige la DIAN)
-async function generarCUFE(texto){
-
-    if(window.crypto && crypto.subtle){
-
-        const buffer = await crypto.subtle.digest("SHA-384", new TextEncoder().encode(texto));
-
-        return [...new Uint8Array(buffer)].map(b => b.toString(16).padStart(2, "0")).join("");
-    }
-
-    let hex = "";
-
-    for(let i = 0; hex.length < 96; i++){
-
-        hex += Math.floor(azar(texto + i) * 0xffffffff).toString(16).padStart(8, "0");
-    }
-
-    return hex.slice(0, 96);
-}
-
 
 
 /* ========================================
@@ -2079,16 +1547,9 @@ function seleccionarMetodo(nombre, el){
    CONFIRMAR COMPRA
 ======================================== */
 
-function generarCodigoDinamico(){
-
-    const tiempo = Math.floor(Date.now() / (1000 * 60));
-
-    const random = Math.floor(Math.random() * 999999);
-
-    return `ONTICKET-${random}-${tiempo}`;
-}
-
 async function confirmarCompra(){
+
+    if(pagando) return;
 
     if(!metodoPago){
 
@@ -2104,85 +1565,47 @@ async function confirmarCompra(){
         return;
     }
 
-    const ev = eventoActual;
+    pagando = true;
 
-    const lugar = lugarDe(ev);
+    renderCheckout();
 
-    const costos = calcularCostos(carrito);
+    try{
 
-    const codigo = generarCodigoDinamico();
+        const compra = crearCompra(eventoActual, carrito, metodoPago, null);
 
-    const fechaCompra = new Date().toISOString();
+        if($("quiereFactura").checked){
 
-    let factura = null;
+            const numero = `OTFE-${await DB.siguienteFactura()}`;
 
-    if($("quiereFactura").checked){
-
-        const consecutivo = Number(localStorage.getItem("consecutivoFE") || 1000) + 1;
-
-        localStorage.setItem("consecutivoFE", consecutivo);
-
-        const numero = `OTFE-${consecutivo}`;
-
-        const adquiriente = datosFactura();
-
-        factura = {
-            numero,
-            fecha: fechaCompra,
-            adquiriente,
-            cufe: await generarCUFE(`${numero}|${fechaCompra}|${costos.total}|${adquiriente.documento}|${codigo}`)
-        };
-    }
-
-    const compra = {
-        codigo,
-        eventoId: ev.id,
-        evento: `${ev.artista} · ${ev.titulo}`,
-        fecha: `${ev.fecha} · ${ev.hora}`,
-        lugar: `${lugar.nombre}, ${lugar.ciudad}`,
-        items: carrito.map(i => ({ ...i })),
-        entradas: carrito.map(i => i.etiqueta),
-        ...costos,
-        metodo: metodoPago,
-        fechaCompra,
-        factura
-    };
-
-    // guardar en el usuario
-    actualizarComprasUsuario(user => user.compras.push(compra));
-
-    // marcar como vendido
-    const ventas = getVentas(ev.id);
-
-    carrito.forEach(i => {
-
-        ventas.ids.push(...i.ids);
-
-        if(i.tipo === "general"){
-
-            ventas.general[i.key] = (ventas.general[i.key] || 0) + i.cantidad;
+            compra.factura = await crearFactura(numero, datosFactura(), compra.total, compra.codigo);
         }
-    });
 
-    saveVentas(ev.id, ventas);
+        const guardada = await DB.comprar(compra);
 
-    carrito = [];
+        carrito = [];
 
-    cerrarModal("checkoutModal");
+        cerrarModal("checkoutModal");
 
-    renderPlano();
+        renderCartBar();
 
-    renderSidebar();
+        mostrarTicket(guardada);
 
-    renderCartBar();
+    }catch(e){
 
-    mostrarTicket(compra);
+        toast(esc(e.message), "fa-triangle-exclamation");
+
+    }finally{
+
+        pagando = false;
+
+        if($("checkoutModal").classList.contains("open")) renderCheckout();
+    }
 }
 
 
 
 /* ========================================
-   TICKET + QR
+   TICKET + QR DINÁMICO
 ======================================== */
 
 function mostrarTicket(compra){
@@ -2201,8 +1624,6 @@ function mostrarTicket(compra){
         <p class="ticketCode">${esc(compra.codigo)}</p>`;
 
     $("invoiceCard").innerHTML = renderFacturaResumen(compra);
-
-    actualizarQR(compra.codigo);
 
     iniciarTimerQR();
 
@@ -2260,13 +1681,6 @@ function verFactura(){
 
     if(!compra || !compra.factura) return;
 
-    const f = compra.factura;
-
-    const a = f.adquiriente;
-
-    const filas = (compra.items || []).map(i => `
-        <tr><td>${esc(i.etiqueta)}</td><td>${i.tipo === "general" ? i.cantidad : 1}</td><td>${fmt(i.precio)}</td><td>${fmt(i.precio * i.cantidad)}</td></tr>`).join("");
-
     const w = window.open("", "_blank");
 
     if(!w){
@@ -2276,54 +1690,12 @@ function verFactura(){
         return;
     }
 
-    w.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${esc(f.numero)}</title>
-    <style>
-        body{font-family:Arial,sans-serif;color:#222;max-width:800px;margin:30px auto;padding:0 20px}
-        header{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #ff6600;padding-bottom:14px}
-        header img{height:50px}
-        h1{font-size:18px;margin:0}
-        .aviso{background:#fff4e5;border:1px solid #ffb74d;padding:8px 12px;border-radius:6px;font-size:12px;margin:16px 0}
-        .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;margin:16px 0}
-        .grid div{background:#f6f6f6;padding:10px;border-radius:6px}
-        table{width:100%;border-collapse:collapse;font-size:13px}
-        th{background:#ff6600;color:#fff;text-align:left;padding:8px}
-        td{border-bottom:1px solid #eee;padding:8px}
-        .tot{margin-left:auto;width:320px;margin-top:14px;font-size:14px}
-        .tot div{display:flex;justify-content:space-between;padding:4px 0}
-        .tot .final{font-weight:bold;font-size:17px;border-top:2px solid #222;margin-top:6px;padding-top:8px}
-        .cufe{word-break:break-all;font-size:11px;color:#555;margin-top:20px}
-        button{margin-top:20px;padding:10px 20px;background:#ff6600;color:#fff;border:0;border-radius:6px;cursor:pointer}
-        @media print{button{display:none}}
-    </style></head><body>
-    <header>
-        <img src="${location.href.replace(/[^/]*$/, "")}img/logo.png" alt="OnTicket">
-        <div style="text-align:right"><h1>Factura electrónica de venta</h1><b>${esc(f.numero)}</b><br><small>${new Date(f.fecha).toLocaleString("es-CO")}</small></div>
-    </header>
-    <div class="aviso">Representación gráfica de una factura electrónica <b>simulada</b> (proyecto académico). No tiene validez fiscal.</div>
-    <div class="grid">
-        <div><b>Emisor</b><br>OnTicket S.A.S.<br>Venta de boletería y servicios de entretenimiento</div>
-        <div><b>Adquiriente</b><br>${esc(a.nombre)}<br>${esc(a.tipoDoc)} ${esc(a.documento)}${a.dv !== null ? "-" + a.dv : ""}<br>${esc(a.direccion)}, ${esc(a.ciudad)}<br>${esc(a.correo)} ${a.telefono ? "· " + esc(a.telefono) : ""}<br>Persona ${esc(a.tipoPersona)} · ${esc(a.responsabilidad)}</div>
-        <div><b>Evento</b><br>${esc(compra.evento)}<br>${esc(compra.fecha)}<br>${esc(compra.lugar)}</div>
-        <div><b>Pago</b><br>${esc(compra.metodo)}<br>Código de compra: ${esc(compra.codigo)}</div>
-    </div>
-    <table><thead><tr><th>Descripción</th><th>Cant.</th><th>Valor unitario</th><th>Total</th></tr></thead><tbody>
-        ${filas}
-        <tr><td>Cargo por servicio (${CONFIG.feeServicio * 100}%)</td><td>1</td><td>${fmt(compra.servicio)}</td><td>${fmt(compra.servicio)}</td></tr>
-    </tbody></table>
-    <div class="tot">
-        <div><span>Boletería (excluida de IVA)</span><span>${fmt(compra.subtotal)}</span></div>
-        <div><span>Cargo por servicio</span><span>${fmt(compra.servicio)}</span></div>
-        <div><span>IVA ${CONFIG.ivaServicio * 100}% (sobre servicio)</span><span>${fmt(compra.iva)}</span></div>
-        <div class="final"><span>TOTAL</span><span>${fmt(compra.total)}</span></div>
-    </div>
-    <p class="cufe"><b>CUFE:</b> ${esc(f.cufe)}</p>
-    <button onclick="window.print()">Imprimir / Guardar PDF</button>
-    </body></html>`);
+    w.document.write(htmlFactura(compra, location.href.replace(/[^/]*$/, "") + "img/logo.png"));
 
     w.document.close();
 }
 
-function actualizarQR(codigo){
+function actualizarQR(){
 
     const qrcode = $("qrcode");
 
@@ -2335,54 +1707,47 @@ function actualizarQR(codigo){
 
     img.alt = "Código QR";
 
-    img.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(codigo)}`;
+    img.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(qrDinamico(compraEnPantalla.codigo))}`;
 
     qrcode.appendChild(img);
 }
 
+// el QR cambia cada 30 s, sincronizado con el reloj (igual que en la app)
 function iniciarTimerQR(){
 
     clearInterval(intervaloQR);
 
-    tiempoRestante = 30;
+    let ventana = ventanaQR();
+
+    actualizarQR();
 
     actualizarTimer();
 
     intervaloQR = setInterval(() => {
 
-        tiempoRestante--;
+        if(ventanaQR() !== ventana){
+
+            ventana = ventanaQR();
+
+            actualizarQR();
+        }
 
         actualizarTimer();
-
-        if(tiempoRestante <= 0){
-
-            clearInterval(intervaloQR);
-
-            actualizarQR(generarCodigoDinamico());
-
-            iniciarTimerQR();
-        }
 
     }, 1000);
 }
 
 function actualizarTimer(){
 
-    const timer = $("qrTimer");
+    const restante = segundosQR();
 
-    if(!timer) return;
-
-    const minutos = Math.floor(tiempoRestante / 60);
-
-    const segundos = tiempoRestante % 60;
-
-    timer.innerText = `${String(minutos).padStart(2, "0")}:${String(segundos).padStart(2, "0")}`;
+    $("qrTimer").innerText = `00:${String(restante).padStart(2, "0")}`;
 
     const circulo = document.querySelector(".progressCircle");
 
     if(circulo){
 
-        circulo.style.strokeDashoffset = 326 * (1 - tiempoRestante / 30);
+        circulo.style.strokeDashoffset = 326 * (1 - restante / QR_PERIODO);
     }
 }
 
@@ -2421,7 +1786,7 @@ function descargarQR(){
    MIS COMPRAS
 ======================================== */
 
-function abrirMisCompras(){
+async function abrirMisCompras(){
 
     if(!currentUser){
 
@@ -2432,16 +1797,27 @@ function abrirMisCompras(){
         return;
     }
 
-    renderCompras();
+    $("misCompras").innerHTML = `<div class="emptyState"><i class="fa-solid fa-spinner fa-spin"></i><p>Cargando tus boletas...</p></div>`;
 
     abrirModal("misComprasModal");
+
+    try{
+
+        comprasUsuario = await DB.misCompras();
+
+    }catch(e){
+
+        toast("No se pudieron cargar tus boletas", "fa-triangle-exclamation");
+    }
+
+    renderCompras();
 }
 
 function renderCompras(){
 
     const cont = $("misCompras");
 
-    if(!currentUser || !(currentUser.compras || []).length){
+    if(!comprasUsuario.length){
 
         cont.innerHTML = `
         <div class="emptyState">
@@ -2452,7 +1828,7 @@ function renderCompras(){
         return;
     }
 
-    cont.innerHTML = currentUser.compras.map((compra, index) => {
+    cont.innerHTML = comprasUsuario.map((compra, index) => {
 
         const ev = getEvento(compra.eventoId);
 
@@ -2486,42 +1862,24 @@ function verCompra(index){
 
     cerrarModal("misComprasModal");
 
-    mostrarTicket(currentUser.compras[index]);
+    mostrarTicket(comprasUsuario[index]);
 }
 
-function eliminarCompra(index){
+async function eliminarCompra(index){
 
     if(!confirm("¿Eliminar esta compra? Las ubicaciones quedarán libres de nuevo.")) return;
 
-    const compra = currentUser.compras[index];
+    try{
 
-    // liberar ubicaciones
-    if(compra.eventoId && compra.items){
+        await DB.eliminarCompra(comprasUsuario[index]);
 
-        const ventas = getVentas(compra.eventoId);
+        comprasUsuario.splice(index, 1);
 
-        compra.items.forEach(i => {
+        renderCompras();
 
-            ventas.ids = ventas.ids.filter(id => !i.ids.includes(id));
+    }catch(e){
 
-            if(i.tipo === "general"){
-
-                ventas.general[i.key] = Math.max(0, (ventas.general[i.key] || 0) - i.cantidad);
-            }
-        });
-
-        saveVentas(compra.eventoId, ventas);
-    }
-
-    actualizarComprasUsuario(user => user.compras.splice(index, 1));
-
-    renderCompras();
-
-    if(eventoActual && eventoPage.style.display === "block"){
-
-        renderPlano();
-
-        renderSidebar();
+        toast("No se pudo eliminar la compra", "fa-triangle-exclamation");
     }
 }
 
@@ -2531,50 +1889,53 @@ function eliminarCompra(index){
    ADMIN PANEL
 ======================================== */
 
-function abrirAdminPanel(){
+async function abrirAdminPanel(){
 
     mostrarPagina(adminPage);
 
-    renderAdminCompras();
+    $("adminTableBody").innerHTML = `<tr><td colspan="8">Cargando...</td></tr>`;
+
+    try{
+
+        renderAdminCompras(await DB.todasLasCompras());
+
+    }catch(e){
+
+        $("adminTableBody").innerHTML = `<tr><td colspan="8">No tienes permisos para ver las compras.</td></tr>`;
+    }
 }
 
-function renderAdminCompras(){
+function renderAdminCompras(compras){
 
-    let filas = "";
+    let totalVentas = 0, totalServicio = 0, facturas = 0;
 
-    let totalVentas = 0, totalServicio = 0, compras = 0, facturas = 0;
+    const filas = compras.map(compra => {
 
-    getUsers().forEach(user => {
+        totalVentas += compra.total;
 
-        (user.compras || []).forEach(compra => {
+        totalServicio += (compra.servicio || 0) + (compra.iva || 0);
 
-            compras++;
+        if(compra.factura) facturas++;
 
-            totalVentas += compra.total;
+        return `
+        <tr class="adminRow">
+            <td>${esc(compra.usuario)}<br><small>${esc(compra.email)}</small></td>
+            <td>${esc(compra.evento || "Andrés Cepeda Tour 2025")}</td>
+            <td>${fmt(compra.subtotal ?? compra.total)}</td>
+            <td>${fmt((compra.servicio || 0) + (compra.iva || 0))}</td>
+            <td><b>${fmt(compra.total)}</b></td>
+            <td>${esc(compra.metodo)}</td>
+            <td>${compra.factura ? esc(compra.factura.numero) : "—"}</td>
+            <td class="mono">${esc(compra.codigo)}</td>
+        </tr>`;
 
-            totalServicio += (compra.servicio || 0) + (compra.iva || 0);
-
-            if(compra.factura) facturas++;
-
-            filas += `
-            <tr class="adminRow">
-                <td>${esc(user.name)}<br><small>${esc(user.email)}</small></td>
-                <td>${esc(compra.evento || "Andrés Cepeda Tour 2025")}</td>
-                <td>${fmt(compra.subtotal ?? compra.total)}</td>
-                <td>${fmt((compra.servicio || 0) + (compra.iva || 0))}</td>
-                <td><b>${fmt(compra.total)}</b></td>
-                <td>${esc(compra.metodo)}</td>
-                <td>${compra.factura ? esc(compra.factura.numero) : "—"}</td>
-                <td class="mono">${esc(compra.codigo)}</td>
-            </tr>`;
-        });
-    });
+    }).join("");
 
     $("adminTableBody").innerHTML = filas || `<tr><td colspan="8">Aún no hay compras.</td></tr>`;
 
     $("adminStats").innerHTML = `
         <div><small>Ventas totales</small><b>${fmt(totalVentas)}</b></div>
-        <div><small>Compras</small><b>${compras}</b></div>
+        <div><small>Compras</small><b>${compras.length}</b></div>
         <div><small>Servicio + IVA</small><b>${fmt(totalServicio)}</b></div>
         <div><small>Facturas electrónicas</small><b>${facturas}</b></div>`;
 }
@@ -2719,7 +2080,7 @@ function togglePassword(){
     input.type = input.type === "password" ? "text" : "password";
 }
 
-function registrarUsuario(){
+async function registrarUsuario(){
 
     const name = $("registerName").value.trim();
 
@@ -2734,53 +2095,45 @@ function registrarUsuario(){
         return;
     }
 
-    const users = getUsers();
+    try{
 
-    if(users.find(u => u.email === email)){
+        const usuario = await DB.registrar(name, email, password);
 
-        toast("Ese correo ya existe", "fa-triangle-exclamation");
+        toast(`Cuenta creada. ¡Bienvenido, ${esc(usuario.name)}!`);
 
-        return;
+        despuesDeEntrar();
+
+    }catch(e){
+
+        toast(esc(e.message), "fa-triangle-exclamation");
     }
-
-    users.push({ name, email, password, role:"user", compras:[] });
-
-    saveUsers(users);
-
-    toast("Cuenta creada correctamente. Ahora inicia sesión.");
-
-    toggleAuthMode();
 }
 
-function iniciarSesion(){
+async function iniciarSesion(){
 
     const email = $("emailInput").value.trim();
 
     const password = $("passwordInput").value;
 
-    const remember = $("rememberUser").checked;
+    try{
 
-    const usuario = getUsers().find(u => u.email === email && u.password === password);
+        const usuario = await DB.login(email, password, $("rememberUser").checked);
 
-    if(!usuario){
+        toast(`¡Hola, ${esc(usuario.name)}!`, "fa-hand");
 
-        toast("Correo o contraseña incorrectos", "fa-circle-xmark");
+        despuesDeEntrar();
 
-        return;
+    }catch(e){
+
+        toast(esc(e.message), "fa-circle-xmark");
     }
+}
 
-    currentUser = usuario;
-
-    if(remember){
-
-        localStorage.setItem("currentUser", JSON.stringify(usuario));
-
-    }else{
-
-        sessionStorage.setItem("currentUser", JSON.stringify(usuario));
-    }
+function despuesDeEntrar(){
 
     $("passwordInput").value = "";
+
+    currentUser = DB.usuario();
 
     actualizarUsuario();
 
@@ -2788,18 +2141,16 @@ function iniciarSesion(){
 
     cerrarLogin();
 
-    toast(`¡Hola, ${esc(usuario.name)}!`, "fa-hand");
+    if(authMode === "register") toggleAuthMode();
 
     if(continuar) abrirCheckout();
 }
 
-function cerrarSesion(){
+async function cerrarSesion(){
 
     if(!confirm("¿Cerrar sesión?")) return;
 
-    localStorage.removeItem("currentUser");
-
-    sessionStorage.removeItem("currentUser");
+    await DB.logout();
 
     currentUser = null;
 
@@ -2809,10 +2160,6 @@ function cerrarSesion(){
 }
 
 function actualizarUsuario(){
-
-    currentUser =
-        JSON.parse(localStorage.getItem("currentUser")) ||
-        JSON.parse(sessionStorage.getItem("currentUser"));
 
     if(currentUser){
 
@@ -2862,8 +2209,16 @@ if(localStorage.getItem("theme") === "dark"){
 
 document.body.classList.add("landingMode");
 
-actualizarUsuario();
+DB.onUsuario(usuario => {
+
+    currentUser = usuario;
+
+    actualizarUsuario();
+});
 
 renderCarrusel();
 
 aplicarFiltros();
+
+// QR que apunta a la descarga del APK (en Vercel apunta al dominio de la web)
+$("qrDescarga").src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=${encodeURIComponent(new URL("descargas/OnTicket.apk", location.href).href)}`;

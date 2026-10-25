@@ -1,0 +1,16 @@
+{
+  "appId": "com.onticket.app",
+  "appName": "OnTicket",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#0e0e12",
+    "adjustMarginsForEdgeToEdge": "force"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1200,
+      "backgroundColor": "#0e0e12",
+      "showSpinner": false
+    }
+  }
+}

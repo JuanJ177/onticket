@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+
+    <meta name="theme-color" content="#0e0e12">
+
+    <title>OnTicket</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap">
+
+    <link rel="stylesheet" href="lib/fontawesome/css/all.min.css">
+
+    <link rel="stylesheet" href="planos.css">
+
+    <link rel="stylesheet" href="app.css">
+
+</head>
+
+<body>
+
+
+
+<!-- ========================================
+     SPLASH
+======================================== -->
+
+<div class="splash" id="splash">
+
+    <img src="img/logo.png" alt="OnTicket">
+
+    <p>Vive la mejor experiencia</p>
+
+</div>
+
+
+
+<!-- ========================================
+     PESTAÑAS PRINCIPALES
+======================================== -->
+
+<main class="tabs">
+
+
+    <!-- EXPLORAR / COMPRAR -->
+
+    <section class="tab active" id="tab-explorar">
+
+        <header class="topBar">
+
+            <img src="img/logo.png" class="topLogo" alt="OnTicket">
+
+            <button class="avatarBtn" id="avatarBtn" onclick="irATab('perfil')">
+
+                <i class="fa-solid fa-user"></i>
+
+            </button>
+
+        </header>
+
+        <div class="saludo">
+
+            <span id="saludoTxt">Hola 👋</span>
+
+            <h1>Vive la mejor <span class="grad">experiencia</span></h1>
+
+        </div>
+
+        <div class="buscador">
+
+            <i class="fa-solid fa-magnifying-glass"></i>
+
+            <input type="search" id="buscar" placeholder="Artista, evento o lugar" oninput="renderEventos()">
+
+        </div>
+
+        <div class="chipsScroll" id="chipsCiudad"></div>
+
+        <div class="chipsScroll small" id="chipsCategoria"></div>
+
+        <h2 class="seccionTitulo">Destacados</h2>
+
+        <div class="destacados" id="destacados"></div>
+
+        <div class="dotsDestacados" id="dotsDestacados"></div>
+
+        <h2 class="seccionTitulo" id="tituloLista">Todos los eventos</h2>
+
+        <div class="listaEventos" id="listaEventos"></div>
+
+    </section>
+
+
+    <!-- MIS BOLETAS -->
+
+    <section class="tab" id="tab-boletas">
+
+        <header class="tabHeader">
+
+            <h1>Mis boletas</h1>
+
+            <button class="iconBtn" onclick="cargarBoletas()" aria-label="Actualizar">
+
+                <i class="fa-solid fa-rotate-right" id="iconRefrescar"></i>
+
+            </button>
+
+        </header>
+
+        <div class="avisoOffline" id="avisoOffline">
+
+            <i class="fa-solid fa-wifi"></i> Sin conexión: mostrando tus boletas guardadas
+
+        </div>
+
+        <div id="listaBoletas" class="listaBoletas"></div>
+
+    </section>
+
+
+    <!-- PERFIL -->
+
+    <section class="tab" id="tab-perfil">
+
+        <header class="tabHeader">
+
+            <h1>Perfil</h1>
+
+        </header>
+
+        <div id="perfilContenido"></div>
+
+    </section>
+
+</main>
+
+
+
+<!-- ========================================
+     BARRA DE PESTAÑAS
+======================================== -->
+
+<nav class="tabbar">
+
+    <button class="tabBtn active" data-tab="explorar" onclick="irATab('explorar')">
+        <i class="fa-solid fa-compass"></i>
+        <span>Explorar</span>
+    </button>
+
+    <button class="tabBtn" data-tab="boletas" onclick="irATab('boletas')">
+        <i class="fa-solid fa-ticket"></i>
+        <span>Mis boletas</span>
+        <b class="tabBadge" id="badgeBoletas"></b>
+    </button>
+
+    <button class="tabBtn" data-tab="perfil" onclick="irATab('perfil')">
+        <i class="fa-solid fa-user"></i>
+        <span>Perfil</span>
+    </button>
+
+</nav>
+
+
+
+<!-- ========================================
+     PANTALLA: EVENTO
+======================================== -->
+
+<section class="pantalla" id="pantalla-evento">
+
+    <div class="pantallaScroll" id="eventoContenido"></div>
+
+    <div class="ctaBar" id="eventoCta"></div>
+
+</section>
+
+
+
+<!-- ========================================
+     PANTALLA: PLANO (COMPRAR)
+======================================== -->
+
+<section class="pantalla planoPantalla" id="pantalla-plano">
+
+    <header class="planoTop">
+
+        <button class="iconBtn" onclick="atras()" aria-label="Volver">
+            <i class="fa-solid fa-arrow-left"></i>
+        </button>
+
+        <div class="planoTitulo">
+            <b id="planoEvento"></b>
+            <small id="planoLugar"></small>
+        </div>
+
+    </header>
+
+    <div class="pisoTabs" id="pisoTabs"></div>
+
+    <div class="chipsScroll small" id="chipsZona"></div>
+
+    <div class="planoToggles">
+
+        <label class="switch">
+            <input type="checkbox" id="soloDisponibles" onchange="cambiarFiltro()">
+            <span class="slider"></span> Solo disponibles
+        </label>
+
+        <label class="switch" id="switchIndividuales">
+            <input type="checkbox" id="soloIndividuales" onchange="cambiarFiltro()">
+            <span class="slider ind"></span> Individuales
+        </label>
+
+        <div class="zoomBtns">
+            <button onclick="zoomBoton(0.7)" aria-label="Alejar"><i class="fa-solid fa-minus"></i></button>
+            <button onclick="zoomBoton(1.4)" aria-label="Acercar"><i class="fa-solid fa-plus"></i></button>
+        </div>
+
+    </div>
+
+    <div class="planoArea" id="planoArea">
+
+        <svg id="planoSvg" class="planoSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+
+        <div class="pistaGesto" id="pistaGesto">
+            <i class="fa-solid fa-hand-pointer"></i> Pellizca para acercar · toca para elegir
+        </div>
+
+    </div>
+
+    <div class="leyenda">
+        <span><i class="lg lgSel"></i> Tuyo</span>
+        <span><i class="lg lgSold"></i> Vendido</span>
+        <span class="lgPalco"><i class="lg lgInd"></i> Palco individual</span>
+    </div>
+
+    <div class="carritoBar" id="carritoBar">
+
+        <div class="carritoInfo" onclick="abrirCheckout()">
+
+            <span class="carritoCount" id="carritoCount">0</span>
+
+            <div>
+                <b id="carritoTotal">$0</b>
+                <small>Incluye servicio e IVA</small>
+            </div>
+
+        </div>
+
+        <button class="btnPrimario" onclick="abrirCheckout()">
+            Continuar <i class="fa-solid fa-arrow-right"></i>
+        </button>
+
+    </div>
+
+</section>
+
+
+
+<!-- ========================================
+     PANTALLA: BOLETA (QR)
+======================================== -->
+
+<section class="pantalla boletaPantalla" id="pantalla-boleta">
+
+    <header class="planoTop transparente">
+
+        <button class="iconBtn" onclick="atras()" aria-label="Volver">
+            <i class="fa-solid fa-arrow-left"></i>
+        </button>
+
+        <div class="planoTitulo"><b>Tu boleta</b></div>
+
+    </header>
+
+    <div class="pantallaScroll" id="boletaContenido"></div>
+
+</section>
+
+
+
+<!-- ========================================
+     HOJA INFERIOR (bottom sheet)
+======================================== -->
+
+<div class="fondoSheet" id="fondoSheet" onclick="atras()"></div>
+
+<div class="sheet" id="sheet">
+
+    <div class="sheetAsa"></div>
+
+    <div class="sheetBody" id="sheetBody"></div>
+
+</div>
+
+
+<div class="toastZone" id="toastZone"></div>
+
+
+
+<!-- Firebase (incluido en la app para funcionar sin internet) -->
+<script src="lib/firebase-app-compat.js"></script>
+<script src="lib/firebase-auth-compat.js"></script>
+<script src="lib/firebase-firestore-compat.js"></script>
+<script src="lib/qrcode.js"></script>
+
+<script src="firebase-config.js"></script>
+<script src="data.js"></script>
+<script src="planos.js"></script>
+<script src="core.js"></script>
+<script src="db.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>

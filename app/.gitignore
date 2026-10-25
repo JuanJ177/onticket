@@ -1,0 +1,12 @@
+node_modules/
+
+# archivos que se copian desde la web con "npm run copiar"
+www/firebase-config.js
+www/data.js
+www/planos.js
+www/planos.css
+www/core.js
+www/db.js
+www/img/
+www/lib/
+*.apk
