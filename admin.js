@@ -1214,6 +1214,8 @@ let ingresosSesion = 0;
 
 async function encenderCamara(){
 
+    sincronizarReloj();
+
     if(typeof jsQR === "undefined"){
 
         toast("No se pudo cargar el lector de QR. Revisa tu conexión", "fa-triangle-exclamation");

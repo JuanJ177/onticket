@@ -4672,3 +4672,191 @@ body.dark .viz{
         display:none !important;
     }
 }
+
+
+
+
+/* ========================================
+   QR PROTEGIDO + BOLETA USADA (WEB)
+======================================== */
+
+.qrProtegido{
+
+    position:relative;
+    width:220px;
+    margin:12px auto 0;
+    border-radius:16px;
+    overflow:hidden;
+    background:white;
+    user-select:none;
+    -webkit-user-select:none;
+    -webkit-touch-callout:none;
+}
+
+.qrProtegido #qrcode{
+
+    min-height:0;
+    margin:0;
+    padding:10px;
+}
+
+.qrProtegido #qrcode svg{
+
+    width:100%;
+    height:auto;
+    display:block;
+}
+
+/* marca de agua tenue: no impide leer el QR, pero identifica al dueño */
+.marcaAgua{
+
+    position:absolute;
+    inset:-20%;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-around;
+    transform:rotate(-30deg);
+    pointer-events:none;
+}
+
+.marcaAgua span{
+
+    white-space:nowrap;
+    font-size:11px;
+    font-weight:700;
+    color:rgba(255,102,0,0.22);
+    text-align:center;
+}
+
+.qrCubierta{
+
+    position:absolute;
+    inset:0;
+    display:none;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    padding:20px;
+    text-align:center;
+    font-size:13px;
+    font-weight:700;
+    color:#444;
+    background:#f1f1f4;
+}
+
+.qrCubierta i{
+
+    font-size:28px;
+    color:var(--brand);
+}
+
+.qrProtegido.oculto .qrCubierta{
+
+    display:flex;
+}
+
+.qrProtegido.oculto #qrcode{
+
+    filter:blur(14px);
+}
+
+.estadoParcialWeb{
+
+    display:none;
+    background:rgba(16,185,129,0.12);
+    color:#0f8a5f;
+    border-radius:10px;
+    padding:8px 10px;
+    font-size:13px;
+    margin-top:10px;
+}
+
+.estadoParcialWeb.show{
+
+    display:block;
+}
+
+.qrUsadoWeb{
+
+    position:relative;
+    width:200px;
+    height:200px;
+    margin:12px auto 10px;
+    border-radius:16px;
+    background:var(--surface);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.qrUsadoWeb > i{
+
+    font-size:130px;
+    color:var(--border);
+}
+
+.selloWeb{
+
+    position:absolute;
+    padding:6px 14px;
+    border:4px solid #e53935;
+    color:#e53935;
+    border-radius:10px;
+    font-family:var(--fontTitle);
+    font-weight:900;
+    font-size:24px;
+    letter-spacing:3px;
+    transform:rotate(-14deg);
+    background:color-mix(in srgb, var(--surface) 80%, transparent);
+}
+
+.qrUsadoWeb.recien .selloWeb{
+
+    animation:sellarWeb 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.4);
+}
+
+@keyframes sellarWeb{
+
+    from{ transform:rotate(-14deg) scale(2.4); opacity:0; }
+}
+
+.usadaTitulo{
+
+    font-size:17px;
+}
+
+.compraGuardada{
+
+    position:relative;
+}
+
+.compraGuardada.usada{
+
+    filter:grayscale(1);
+    opacity:0.65;
+}
+
+.usadaTag{
+
+    align-self:flex-start;
+    font-size:11px;
+    font-weight:800;
+    background:#e5e7eb;
+    color:#374151;
+    padding:3px 9px;
+    border-radius:10px;
+    margin-bottom:4px;
+}
+
+.usadaTag.parcial{
+
+    background:rgba(16,185,129,0.14);
+    color:#0f8a5f;
+}
+
+body.dark .usadaTag{
+
+    background:#2c2e36;
+    color:#e5e7eb;
+}

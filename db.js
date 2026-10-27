@@ -534,6 +534,12 @@ const DB = (() => {
                 }
             },
 
+            // la boleta del cliente se actualiza sola cuando la escanean en la entrada
+            escucharCompra(codigo, cb){
+
+                return fs.doc(`compras/${codigo}`).onSnapshot(snap => { if(snap.exists) cb(snap.data()); }, () => {});
+            },
+
             async registrarIngreso(codigo, n){
 
                 const ref = fs.doc(`compras/${codigo}`);
@@ -873,6 +879,17 @@ const DB = (() => {
                 return leer("compras", []).find(c => c.codigo === codigo) || null;
             },
 
+            escucharCompra(codigo, cb){
+
+                return escuchar("compras", lista => {
+
+                    const c = (lista || []).find(x => x.codigo === codigo);
+
+                    if(c) cb(c);
+
+                }, leer("compras", []));
+            },
+
             async registrarIngreso(codigo, n){
 
                 const compras = leer("compras", []);
@@ -883,7 +900,7 @@ const DB = (() => {
 
                 Object.assign(c, registrarIngresoEn(c, n, usuario && usuario.email));
 
-                escribir("compras", compras);
+                guardarDoc("compras", compras);
 
                 return c;
             },

@@ -2878,3 +2878,259 @@ body.claro .perfilTarjeta{
 
     text-align:left;
 }
+
+
+
+/* ========================================
+   CORRECCIÓN: pantallas ocultas no deben verse ni "manchar" la app
+   (la sombra del marco del escáner oscurecía todo)
+======================================== */
+
+.pantalla{
+
+    overflow:hidden;
+    visibility:hidden;
+    transition:transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s linear 0.32s;
+}
+
+.pantalla.abierta{
+
+    visibility:visible;
+    transition:transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s;
+}
+
+
+
+/* ========================================
+   BARRA SUPERIOR: botón de tema
+======================================== */
+
+.topAcciones{
+
+    display:flex;
+    gap:10px;
+    align-items:center;
+}
+
+.temaBtn{
+
+    width:42px;
+    height:42px;
+    border-radius:50%;
+    border:1px solid var(--border);
+    background:var(--surface);
+    color:var(--text);
+    font-size:16px;
+}
+
+.temaFila{
+
+    flex-wrap:wrap;
+}
+
+.segmentoTema{
+
+    margin-left:auto;
+    display:flex;
+    background:var(--surface2);
+    border-radius:10px;
+    padding:3px;
+}
+
+.segmentoTema button{
+
+    border:none;
+    background:none;
+    padding:7px 10px;
+    border-radius:8px;
+    font-size:12px;
+    font-weight:700;
+    color:var(--muted);
+}
+
+.segmentoTema button.active{
+
+    background:var(--brand);
+    color:white;
+}
+
+
+
+/* ========================================
+   BOLETA YA USADA (escaneada en la entrada)
+======================================== */
+
+.boletaTarjeta{
+
+    position:relative;
+}
+
+.boletaTarjeta.usada{
+
+    filter:grayscale(1);
+    opacity:0.6;
+}
+
+.selloLista{
+
+    align-self:flex-start;
+    margin-bottom:2px;
+    background:#2c2e36;
+    color:#e5e7eb;
+    font-size:11px;
+    font-weight:800;
+    padding:4px 9px;
+    border-radius:10px;
+    display:flex;
+    gap:5px;
+    align-items:center;
+}
+
+.selloLista.parcial{
+
+    background:rgba(16,185,129,0.18);
+    color:var(--ind);
+}
+
+.qrUsado{
+
+    position:relative;
+    width:min(250px, 70vw);
+    aspect-ratio:1;
+    margin:6px auto 10px;
+    border-radius:20px;
+    background:var(--surface2);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.qrFantasma i{
+
+    font-size:150px;
+    color:var(--border);
+}
+
+.sello{
+
+    position:absolute;
+    padding:8px 18px;
+    border:4px solid #ef5350;
+    color:#ef5350;
+    border-radius:10px;
+    font-family:var(--fontTitle);
+    font-weight:900;
+    font-size:28px;
+    letter-spacing:4px;
+    transform:rotate(-14deg);
+    background:color-mix(in srgb, var(--surface) 80%, transparent);
+}
+
+.qrUsado.recien .sello{
+
+    animation:sellar 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.4);
+}
+
+@keyframes sellar{
+
+    from{ transform:rotate(-14deg) scale(2.4); opacity:0; }
+}
+
+.usadaTitulo{
+
+    font-size:17px;
+    margin-top:4px;
+}
+
+.usadaTexto{
+
+    color:var(--muted);
+    font-size:13px;
+    margin-top:4px;
+}
+
+.codigoGrande.usado{
+
+    color:var(--muted);
+    text-decoration:line-through;
+}
+
+.estadoParcial{
+
+    background:rgba(16,185,129,0.14);
+    color:var(--ind);
+    border-radius:12px;
+    padding:10px 12px;
+    font-size:13px;
+    margin-bottom:12px;
+    text-align:left;
+}
+
+.estadoParcial:empty{
+
+    display:none;
+}
+
+
+
+/* ========================================
+   MODO CLARO: textos que eran para fondo oscuro
+======================================== */
+
+body.claro .tag{
+
+    color:#c2410c;
+    background:rgba(255,102,0,0.1);
+}
+
+body.claro .tag.verde,
+body.claro .faltan{
+
+    color:#047857;
+}
+
+body.claro .destacadoInfo .tag,
+body.claro .boletaCabeza .tag{
+
+    color:#ffad70;
+    background:rgba(255,102,0,0.18);
+}
+
+body.claro .destacadoInfo .tag.verde{
+
+    color:#7ef0c4;
+}
+
+body.claro .eventoCuerpo > h3{
+
+    color:#c2410c;
+}
+
+body.claro .avisoOffline,
+body.claro .reservaApp,
+body.claro .chipVerificar,
+body.claro .aviso{
+
+    color:#92400e;
+}
+
+body.claro .perfilTarjeta{
+
+    background:linear-gradient(135deg, #ffe7d4, var(--surface));
+}
+
+body.claro .selloLista{
+
+    background:#e5e7eb;
+    color:#374151;
+}
+
+body.claro .eventoHero::after{
+
+    background:linear-gradient(0deg, var(--bg), transparent 55%);
+}
+
+body.claro .toast{
+
+    box-shadow:0 12px 30px rgba(0,0,0,0.12);
+}

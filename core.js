@@ -720,14 +720,66 @@ function crearCompra(evento, carrito, metodo, factura){
 
 const QR_PERIODO = 30;
 
+/* ----- reloj sincronizado con el servidor -----
+   El QR depende de la hora. Si el celular del cliente y el equipo de la
+   taquilla tienen la hora un poco distinta (muy común en computadores),
+   un QR válido podía parecer vencido. Por eso ambos usan la hora del
+   servidor de la web (encabezado "Date"), no la del dispositivo. */
+
+let desfaseReloj = 0;
+
+try{ desfaseReloj = Number(localStorage.getItem("desfaseReloj")) || 0; }catch(e){}
+
+function ahora(){
+
+    return Date.now() + desfaseReloj;
+}
+
+async function sincronizarReloj(){
+
+    const base = CONFIG.sitioWeb || (location.protocol.startsWith("http") ? location.origin + "/" : "");
+
+    if(!base) return;
+
+    try{
+
+        const t0 = Date.now();
+
+        const r = await fetch(`${base}version-app.json?reloj=${t0}`, { cache: "no-store" });
+
+        const t1 = Date.now();
+
+        const servidor = Date.parse(r.headers.get("date"));
+
+        if(servidor){
+
+            // el encabezado trae segundos enteros: +500 ms es el punto medio
+            desfaseReloj = Math.round(servidor + 500 - (t0 + t1) / 2);
+
+            try{ localStorage.setItem("desfaseReloj", desfaseReloj); }catch(e){}
+        }
+
+    }catch(e){}
+}
+
 function ventanaQR(){
 
-    return Math.floor(Date.now() / 1000 / QR_PERIODO);
+    return Math.floor(ahora() / 1000 / QR_PERIODO);
 }
 
 function segundosQR(){
 
-    return QR_PERIODO - Math.floor((Date.now() / 1000) % QR_PERIODO);
+    return QR_PERIODO - Math.floor((ahora() / 1000) % QR_PERIODO);
+}
+
+// Estado de ingreso de una boleta (lo marca la taquilla)
+function estadoIngreso(compra){
+
+    const total = personasCompra(compra);
+
+    const usados = Math.min(compra.ingresos || 0, total);
+
+    return { total, usados, completa: usados >= total, parcial: usados > 0 && usados < total };
 }
 
 function firmaQR(codigo, v){
@@ -770,7 +822,8 @@ function leerQR(texto){
             return { codigo, valido:false, motivo:"El QR no es auténtico (firma inválida)" };
         }
 
-        if(ventana < actual - 2 || ventana > actual + 1){
+        // margen de ±1,5 minutos (relojes ya sincronizados); una captura vieja no pasa
+        if(ventana < actual - 3 || ventana > actual + 3){
 
             return { codigo, valido:false, motivo:"QR vencido: parece una captura de pantalla. Pide abrir la boleta en la app." };
         }
@@ -1042,3 +1095,5 @@ function correoCompra(compra, sitio){
         </div>`
     };
 }
+
+sincronizarReloj();

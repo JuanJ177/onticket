@@ -42,9 +42,9 @@
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
     >
 
-    <link rel="stylesheet" href="style.css?v=5">
+    <link rel="stylesheet" href="style.css?v=6">
 
-    <link rel="stylesheet" href="planos.css?v=5">
+    <link rel="stylesheet" href="planos.css?v=6">
 
 </head>
 
@@ -1333,28 +1333,7 @@
 
                 <div id="ticketTexto"></div>
 
-                <div id="qrcode"></div>
-
-                <div class="qrTimerContainer">
-
-                    <svg class="progressRing" width="120" height="120">
-                        <circle class="progressBg" cx="60" cy="60" r="52"></circle>
-                        <circle class="progressCircle" cx="60" cy="60" r="52"></circle>
-                    </svg>
-
-                    <div id="qrTimer">00:30</div>
-
-                </div>
-
-                <p class="qrNote">El QR cambia cada 30 segundos para evitar fraudes.</p>
-
-                <button class="primaryBtn" onclick="descargarQR()">
-
-                    <i class="fa-solid fa-download"></i>
-
-                    Descargar QR
-
-                </button>
+                <div id="zonaQR"></div>
 
             </div>
 
@@ -1393,16 +1372,19 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
+<!-- Generador de QR (se dibuja en la página, sin servicios externos) -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@2.0.4/dist/qrcode.js"></script>
+
 <!-- Lector de QR para la taquilla -->
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 
-<script src="firebase-config.js?v=5"></script>
-<script src="data.js?v=5"></script>
-<script src="planos.js?v=5"></script>
-<script src="core.js?v=5"></script>
-<script src="db.js?v=5"></script>
-<script src="script.js?v=5"></script>
-<script src="admin.js?v=5"></script>
+<script src="firebase-config.js?v=6"></script>
+<script src="data.js?v=6"></script>
+<script src="planos.js?v=6"></script>
+<script src="core.js?v=6"></script>
+<script src="db.js?v=6"></script>
+<script src="script.js?v=6"></script>
+<script src="admin.js?v=6"></script>
 
 </body>
 </html>

@@ -1779,9 +1779,91 @@ function mostrarTicket(compra){
 
     $("invoiceCard").innerHTML = renderFacturaResumen(compra);
 
-    iniciarTimerQR();
+    $("zonaQR").innerHTML = htmlZonaQR(compra);
+
+    // título según el estado: compra recién hecha o boleta ya usada
+    document.querySelector("#ticketModal .successHead h2").innerText =
+        estadoIngreso(compra).completa ? "Boleta utilizada" : (compra.ingresos ? "Tu boleta" : "¡Tu experiencia está asegurada!");
+
+    if(!estadoIngreso(compra).completa) iniciarTimerQR();
 
     abrirModal("ticketModal");
+
+    // si la escanean en la entrada, se actualiza sola
+    if(dejarDeEscucharTicket) dejarDeEscucharTicket();
+
+    let ingresosAntes = compra.ingresos || 0;
+
+    dejarDeEscucharTicket = DB.escucharCompra(compra.codigo, nueva => {
+
+        if((nueva.ingresos || 0) === ingresosAntes) return;
+
+        ingresosAntes = nueva.ingresos || 0;
+
+        compraEnPantalla = nueva;
+
+        const i = comprasUsuario.findIndex(x => x.codigo === nueva.codigo);
+
+        if(i >= 0) comprasUsuario[i] = nueva;
+
+        const est = estadoIngreso(nueva);
+
+        if(est.completa){
+
+            clearInterval(intervaloQR);
+
+            $("zonaQR").innerHTML = htmlZonaQR(nueva, true);
+
+        }else{
+
+            $("zonaQR").querySelector(".estadoParcialWeb").outerHTML = htmlParcialWeb(est);
+
+            toast(`Ingreso registrado: ${est.usados} de ${est.total}`, "fa-door-open");
+        }
+    });
+}
+
+let dejarDeEscucharTicket = null;
+
+function htmlParcialWeb(est){
+
+    return `<div class="estadoParcialWeb ${est.parcial ? "show" : ""}">${est.parcial ? `<i class="fa-solid fa-person-walking-arrow-right"></i> Ya ingresaron <b>${est.usados} de ${est.total}</b>. El QR sigue activo para los demás.` : ""}</div>`;
+}
+
+function htmlZonaQR(compra, recien){
+
+    const est = estadoIngreso(compra);
+
+    if(est.completa){
+
+        const hora = compra.ultimoIngreso ? new Date(compra.ultimoIngreso).toLocaleString("es-CO", { weekday:"short", day:"numeric", month:"short", hour:"numeric", minute:"2-digit" }) : "";
+
+        return `
+            <div class="qrUsadoWeb ${recien ? "recien" : ""}">
+                <i class="fa-solid fa-qrcode"></i>
+                <span class="selloWeb">UTILIZADA</span>
+            </div>
+            <h3 class="usadaTitulo">${recien ? "¡Ingreso registrado! Disfruta el show 🎉" : "Ya ingresaste a este evento"}</h3>
+            <p class="qrNote">${est.total === 1 ? "Esta boleta ya fue usada" : `Las ${est.total} entradas ya fueron usadas`}${hora ? " · " + esc(hora) : ""}</p>`;
+    }
+
+    const marca = currentUser ? esc(currentUser.name || currentUser.email) : "OnTicket";
+
+    return `
+        ${htmlParcialWeb(est)}
+        <div class="qrProtegido" id="qrProtegido" oncontextmenu="return false" ondragstart="return false">
+            <div id="qrcode"></div>
+            <div class="marcaAgua">${Array.from({ length: 6 }, () => `<span>${marca} · ${esc(compra.codigo.slice(-8))}</span>`).join("")}</div>
+            <div class="qrCubierta"><i class="fa-solid fa-eye-slash"></i> Vuelve a esta ventana para ver tu QR</div>
+        </div>
+        <div class="qrTimerContainer">
+            <svg class="progressRing" width="120" height="120">
+                <circle class="progressBg" cx="60" cy="60" r="52"></circle>
+                <circle class="progressCircle" cx="60" cy="60" r="52"></circle>
+            </svg>
+            <div id="qrTimer">00:30</div>
+        </div>
+        <p class="qrNote"><i class="fa-solid fa-shield-halved"></i> QR dinámico: cambia cada 30 s y se oculta si sales de la ventana. Una captura no sirve para entrar.</p>`;
 }
 
 function renderFacturaResumen(compra){
@@ -1851,19 +1933,17 @@ function verFactura(){
 
 function actualizarQR(){
 
-    const qrcode = $("qrcode");
+    const cont = $("qrcode");
 
-    qrcode.innerHTML = "";
+    if(!cont) return;
 
-    const img = new Image();
+    const qr = qrcode(0, "M");
 
-    img.id = "qrImage";
+    qr.addData(qrDinamico(compraEnPantalla.codigo));
 
-    img.alt = "Código QR";
+    qr.make();
 
-    img.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(qrDinamico(compraEnPantalla.codigo))}`;
-
-    qrcode.appendChild(img);
+    cont.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
 }
 
 // el QR cambia cada 30 s, sincronizado con el reloj (igual que en la app)
@@ -1895,6 +1975,8 @@ function actualizarTimer(){
 
     const restante = segundosQR();
 
+    if(!$("qrTimer")) return;
+
     $("qrTimer").innerText = `00:${String(restante).padStart(2, "0")}`;
 
     const circulo = document.querySelector(".progressCircle");
@@ -1910,29 +1992,56 @@ function cerrarTicket(){
     cerrarModal("ticketModal");
 
     clearInterval(intervaloQR);
-}
 
-function descargarQR(){
+    if(dejarDeEscucharTicket){
 
-    const qrImage = $("qrImage");
+        dejarDeEscucharTicket();
 
-    if(!qrImage){
-
-        toast("QR no encontrado", "fa-circle-xmark");
-
-        return;
+        dejarDeEscucharTicket = null;
     }
-
-    const link = document.createElement("a");
-
-    link.href = qrImage.src;
-
-    link.download = "ticketQR.png";
-
-    link.target = "_blank";
-
-    link.click();
 }
+
+/* ----- protección del QR en la web -----
+   Los navegadores no permiten bloquear las capturas de pantalla (eso solo
+   lo puede hacer la app nativa). Aquí se dificulta: el QR se oculta cuando
+   la ventana pierde el foco o se pulsa "Imprimir pantalla", lleva marca de
+   agua con el nombre del comprador y además cambia cada 30 segundos. */
+
+function ocultarQR(ocultar){
+
+    const z = $("qrProtegido");
+
+    if(z) z.classList.toggle("oculto", ocultar);
+}
+
+window.addEventListener("blur", () => ocultarQR(true));
+
+window.addEventListener("focus", () => ocultarQR(false));
+
+document.addEventListener("visibilitychange", () => ocultarQR(document.visibilityState !== "visible"));
+
+document.addEventListener("keydown", e => {
+
+    if(e.key === "PrintScreen" || (e.metaKey && e.shiftKey) || (e.key === "s" && e.shiftKey && (e.metaKey || e.getModifierState("OS")))){
+
+        ocultarQR(true);
+
+        setTimeout(() => { if(document.hasFocus()) ocultarQR(false); }, 2500);
+    }
+});
+
+document.addEventListener("keyup", e => {
+
+    if(e.key === "PrintScreen"){
+
+        ocultarQR(true);
+
+        // si quedó algo en el portapapeles, se reemplaza
+        if(navigator.clipboard) navigator.clipboard.writeText("Boleta protegida · OnTicket").catch(() => {});
+
+        setTimeout(() => ocultarQR(false), 2500);
+    }
+});
 
 
 
@@ -1986,12 +2095,15 @@ function renderCompras(){
 
         const ev = getEvento(compra.eventoId);
 
+        const ing = estadoIngreso(compra);
+
         return `
-        <div class="compraGuardada">
+        <div class="compraGuardada ${ing.completa ? "usada" : ""}">
 
             ${ev ? `<img src="${ev.imagen}" alt="">` : `<div class="compraImg"><i class="fa-solid fa-ticket"></i></div>`}
 
             <div class="compraInfo">
+                ${ing.completa ? `<span class="usadaTag"><i class="fa-solid fa-circle-check"></i> Ya ingresaste</span>` : ing.parcial ? `<span class="usadaTag parcial">${ing.usados} de ${ing.total} ingresaron</span>` : ""}
                 <b>${esc(compra.evento || "Andrés Cepeda Tour 2025")}</b>
                 <small>${esc(compra.fecha || "")}</small>
                 <small>${(compra.items || compra.entradas || []).length} ítem(s) · ${esc(compra.metodo)}</small>

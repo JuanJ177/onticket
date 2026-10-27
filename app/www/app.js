@@ -55,6 +55,7 @@ let pagando = false;
 let factura = { quiere:false };
 
 let intervaloQR = null;
+let dejarDeEscucharBoleta = null;
 let intervaloDestacados = null;
 
 
@@ -132,7 +133,19 @@ function cerrarCapa(capa){
 
     $(capa.id).classList.remove("abierta");
 
-    if(capa.id === "pantalla-boleta") clearInterval(intervaloQR);
+    if(capa.id === "pantalla-boleta"){
+
+        clearInterval(intervaloQR);
+
+        if(dejarDeEscucharBoleta){
+
+            dejarDeEscucharBoleta();
+
+            dejarDeEscucharBoleta = null;
+        }
+
+        protegerPantalla(false);
+    }
 
     if(capa.id === "pantalla-plano"){
 
@@ -1687,10 +1700,13 @@ function renderBoletas(){
 
         const n = (c.items || []).reduce((s, i) => s + (i.tipo === "general" ? i.cantidad : i.personas || 1), 0) || (c.entradas || []).length;
 
+        const ing = estadoIngreso(c);
+
         return `
-        <article class="boletaTarjeta" onclick="abrirBoleta('${esc(c.codigo)}')">
+        <article class="boletaTarjeta ${ing.completa ? "usada" : ""}" onclick="abrirBoleta('${esc(c.codigo)}')">
             <div class="boletaImg" style="background-image:url('${ev ? ev.imagen : "img/logo.png"}')"></div>
             <div class="boletaInfo">
+                ${ing.completa ? `<span class="selloLista"><i class="fa-solid fa-circle-check"></i> Ya ingresaste</span>` : ing.parcial ? `<span class="selloLista parcial">${ing.usados} de ${ing.total} ingresaron</span>` : ""}
                 <b>${esc(ev ? ev.artista : c.evento)}</b>
                 <small><i class="fa-regular fa-calendar"></i> ${esc(c.fecha || "")}</small>
                 <small><i class="fa-solid fa-location-dot"></i> ${esc(c.lugar || "")}</small>
@@ -1735,15 +1751,7 @@ function abrirBoleta(codigo){
 
             <div class="perforado"></div>
 
-            <div class="boletaQR">
-                <div class="qr" id="qrBoleta"></div>
-                <div class="qrTiempo">
-                    <div class="qrBarra"><i id="qrBarra"></i></div>
-                    <small>El código se renueva en <b id="qrSegundos">30</b> s</small>
-                </div>
-                <p class="codigoGrande">${esc(c.codigo)}</p>
-                <small class="ayudaQR"><i class="fa-solid fa-shield-halved"></i> QR dinámico: las capturas de pantalla no sirven para entrar</small>
-            </div>
+            <div class="boletaQR" id="boletaQR">${htmlQRBoleta(c)}</div>
 
             <div class="perforado"></div>
 
@@ -1765,7 +1773,97 @@ function abrirBoleta(codigo){
 
     abrirPantalla("pantalla-boleta");
 
-    iniciarQR(c.codigo);
+    if(!estadoIngreso(c).completa) iniciarQR(c.codigo);
+
+    // no se permiten capturas mientras se ve el QR (solo en la app de Android)
+    protegerPantalla(true);
+
+    // si la escanean en la entrada, la boleta se actualiza sola
+    if(dejarDeEscucharBoleta) dejarDeEscucharBoleta();
+
+    let ingresosAntes = c.ingresos || 0;
+
+    dejarDeEscucharBoleta = DB.escucharCompra(codigo, nueva => {
+
+        if((nueva.ingresos || 0) === ingresosAntes) return;
+
+        ingresosAntes = nueva.ingresos || 0;
+
+        const i = compras.findIndex(x => x.codigo === codigo);
+
+        if(i >= 0) compras[i] = nueva;
+
+        guardarCache();
+
+        renderBoletas();
+
+        const est = estadoIngreso(nueva);
+
+        if(navigator.vibrate) navigator.vibrate([60, 40, 60]);
+
+        if(est.completa){
+
+            clearInterval(intervaloQR);
+
+            $("boletaQR").innerHTML = htmlQRBoleta(nueva, true);
+
+        }else{
+
+            $("estadoParcial").outerHTML = htmlParcial(est);
+
+            toast(`Ingreso registrado: ${est.usados} de ${est.total}`, "fa-door-open");
+        }
+    });
+}
+
+function htmlParcial(est){
+
+    return est.parcial
+        ? `<div class="estadoParcial" id="estadoParcial"><i class="fa-solid fa-person-walking-arrow-right"></i> Ya ingresaron <b>${est.usados} de ${est.total}</b>. El QR sigue activo para los demás.</div>`
+        : `<div id="estadoParcial"></div>`;
+}
+
+function htmlQRBoleta(c, recien){
+
+    const est = estadoIngreso(c);
+
+    if(est.completa){
+
+        const hora = c.ultimoIngreso ? new Date(c.ultimoIngreso).toLocaleString("es-CO", { weekday:"short", day:"numeric", month:"short", hour:"numeric", minute:"2-digit" }) : "";
+
+        return `
+            <div class="qrUsado ${recien ? "recien" : ""}">
+                <div class="qrFantasma"><i class="fa-solid fa-qrcode"></i></div>
+                <div class="sello">UTILIZADA</div>
+            </div>
+            <h3 class="usadaTitulo">${recien ? "¡Ingreso registrado! Disfruta el show 🎉" : "Ya ingresaste a este evento"}</h3>
+            <p class="usadaTexto">${est.total === 1 ? "Esta boleta" : `Las ${est.total} entradas de esta boleta`} ya ${est.total === 1 ? "fue usada" : "fueron usadas"}${hora ? " · " + esc(hora) : ""}</p>
+            <p class="codigoGrande usado">${esc(c.codigo)}</p>`;
+    }
+
+    return `
+        ${htmlParcial(est)}
+        <div class="qr" id="qrBoleta"></div>
+        <div class="qrTiempo">
+            <div class="qrBarra"><i id="qrBarra"></i></div>
+            <small>El código se renueva en <b id="qrSegundos">30</b> s</small>
+        </div>
+        <p class="codigoGrande">${esc(c.codigo)}</p>
+        <small class="ayudaQR"><i class="fa-solid fa-shield-halved"></i> QR dinámico y protegido: no se puede capturar la pantalla</small>`;
+}
+
+// FLAG_SECURE de Android (plugin propio "Privacidad"): bloquea capturas y grabaciones
+function protegerPantalla(activar){
+
+    const cap = window.Capacitor;
+
+    if(!cap || !cap.isNativePlatform || !cap.isNativePlatform()) return;
+
+    const privacidad = cap.Plugins && cap.Plugins.Privacidad;
+
+    if(!privacidad) return;
+
+    (activar ? privacidad.activar() : privacidad.desactivar()).catch(() => {});
 }
 
 function dibujarQR(codigo){
@@ -1875,7 +1973,13 @@ function opcionesPerfil(oscuro){
 
     return `
         <div class="opciones">
-            <button class="opcion" onclick="cambiarTema()"><i class="fa-solid ${oscuro ? "fa-sun" : "fa-moon"}"></i> ${oscuro ? "Modo claro" : "Modo oscuro"}</button>
+            <div class="opcion temaFila">
+                <i class="fa-solid fa-circle-half-stroke"></i> Tema
+                <div class="segmentoTema">
+                    ${[["auto", "Automático"], ["claro", "Claro"], ["oscuro", "Oscuro"]].map(([v, t]) =>
+                        `<button class="${temaElegido() === v ? "active" : ""}" onclick="elegirTema('${v}')">${t}</button>`).join("")}
+                </div>
+            </div>
             <a class="opcion" href="mailto:soporte@onticket.com"><i class="fa-regular fa-envelope"></i> soporte@onticket.com</a>
             <a class="opcion" href="tel:+573205557788"><i class="fa-solid fa-phone"></i> +57 320 555 7788 · 24/7</a>
             <div class="opcion info"><i class="fa-solid fa-database"></i> ${DB.modo === "firebase" ? "Conectado a la nube (Firebase)" : "Modo local (sin Firebase)"}</div>
@@ -1897,13 +2001,50 @@ async function salir(){
     alCambiarUsuario();
 }
 
-function cambiarTema(){
+/* ----- tema: automático (sigue al celular), claro u oscuro ----- */
 
-    document.body.classList.toggle("claro");
+const sistemaClaro = window.matchMedia ? window.matchMedia("(prefers-color-scheme: light)") : null;
 
-    localStorage.setItem("temaApp", document.body.classList.contains("claro") ? "claro" : "oscuro");
+function temaElegido(){
+
+    return localStorage.getItem("temaApp") || "auto";
+}
+
+function aplicarTema(){
+
+    const t = temaElegido();
+
+    const claro = t === "claro" || (t === "auto" && sistemaClaro && sistemaClaro.matches);
+
+    document.body.classList.toggle("claro", claro);
+
+    const meta = document.querySelector('meta[name="theme-color"]');
+
+    if(meta) meta.content = claro ? "#f4f4f7" : "#0e0e12";
+
+    const btn = $("temaBtn");
+
+    if(btn) btn.innerHTML = `<i class="fa-solid ${claro ? "fa-moon" : "fa-sun"}"></i>`;
+}
+
+function elegirTema(t){
+
+    localStorage.setItem("temaApp", t);
+
+    aplicarTema();
 
     renderPerfil();
+}
+
+// botón rápido ☀️/🌙 de la barra superior
+function cambiarTema(){
+
+    elegirTema(document.body.classList.contains("claro") ? "oscuro" : "claro");
+}
+
+if(sistemaClaro && sistemaClaro.addEventListener){
+
+    sistemaClaro.addEventListener("change", () => { if(temaElegido() === "auto") aplicarTema(); });
 }
 
 
@@ -1936,7 +2077,7 @@ function alCambiarUsuario(){
     }
 }
 
-if(localStorage.getItem("temaApp") === "claro") document.body.classList.add("claro");
+aplicarTema();
 
 // barra de estado del celular (solo dentro de la app nativa)
 (function(){
@@ -1979,6 +2120,8 @@ let validando = false;
 let ingresosTurno = 0;
 
 async function abrirEscaner(){
+
+    sincronizarReloj();
 
     abrirPantalla("pantalla-escaner");
 
