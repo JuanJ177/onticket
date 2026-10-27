@@ -11,34 +11,68 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function esAdmin() {
-      return logueado() &&
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'admin';
+    // correo real: verificado por enlace, o cuenta de Google
+    function correoVerificado() {
+      return logueado() && request.auth.token.email_verified == true;
     }
 
-    // Perfil: cada quien ve y edita el suyo; nadie se puede volver admin solo
+    function rol() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role;
+    }
+
+    function esAdmin() {
+      return logueado() && rol() == 'admin';
+    }
+
+    // personal de taquilla (o admin): valida boletas en la entrada
+    function esStaff() {
+      return logueado() && rol() in ['admin', 'taquilla'];
+    }
+
+    // Perfil: cada quien ve y edita el suyo; nadie se puede asignar un rol solo
     match /usuarios/{uid} {
       allow read: if logueado() && (request.auth.uid == uid || esAdmin());
       allow create: if logueado() && request.auth.uid == uid && request.resource.data.role == 'user';
       allow update: if logueado() && request.auth.uid == uid && request.resource.data.role == resource.data.role;
     }
 
-    // Compras: cada usuario ve las suyas; el admin ve todas
+    // Eventos: todos los ven, solo el admin los crea o edita
+    match /eventos/{id} {
+      allow read: if true;
+      allow write: if esAdmin();
+    }
+
+    // Compras: cada usuario ve las suyas; admin y taquilla ven todas.
+    // Para comprar se exige correo verificado.
+    // La taquilla solo puede modificar el conteo de ingresos.
     match /compras/{codigo} {
-      allow read: if logueado() && (resource.data.uid == request.auth.uid || esAdmin());
-      allow create: if logueado() && request.resource.data.uid == request.auth.uid;
+      allow read: if logueado() && (resource.data.uid == request.auth.uid || esStaff());
+      allow create: if correoVerificado() && request.resource.data.uid == request.auth.uid;
+      allow update: if esStaff() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ingresos', 'ultimoIngreso', 'ultimoIngresoPor']);
       allow delete: if logueado() && (resource.data.uid == request.auth.uid || esAdmin());
     }
 
     // Sillas vendidas por evento: todos las ven (para pintar el plano)
     match /ventas/{eventoId} {
       allow read: if true;
-      allow write: if logueado();
+      allow write: if correoVerificado();
+    }
+
+    // Sillas apartadas mientras alguien paga
+    match /reservas/{eventoId} {
+      allow read: if true;
+      allow write: if correoVerificado();
     }
 
     // Consecutivo de facturas electrónicas
     match /contadores/{id} {
-      allow read, write: if logueado();
+      allow read, write: if correoVerificado();
+    }
+
+    // Cola de correos (los envía la extensión "Trigger Email")
+    match /correos/{id} {
+      allow create: if correoVerificado();
     }
   }
 }

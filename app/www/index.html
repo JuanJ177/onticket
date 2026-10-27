@@ -242,6 +242,8 @@
 
     <div class="carritoBar" id="carritoBar">
 
+        <div class="reservaBarra"><i class="fa-solid fa-hourglass-half"></i> Apartadas <b class="reservaTiempo">10:00</b></div>
+
         <div class="carritoInfo" onclick="abrirCheckout()">
 
             <span class="carritoCount" id="carritoCount">0</span>
@@ -286,6 +288,46 @@
 
 
 <!-- ========================================
+     PANTALLA: MODO TAQUILLA (escáner)
+======================================== -->
+
+<section class="pantalla escanerPantalla" id="pantalla-escaner">
+
+    <video id="videoEscaner" playsinline muted></video>
+
+    <div class="marcoEscaner"><span></span></div>
+
+    <header class="planoTop transparente">
+
+        <button class="iconBtn" onclick="atras()" aria-label="Volver">
+            <i class="fa-solid fa-arrow-left"></i>
+        </button>
+
+        <div class="planoTitulo"><b>Modo taquilla</b><small>Ingresos en este turno: <span id="contadorTurno">0</span></small></div>
+
+    </header>
+
+    <div class="camaraAviso" id="camaraAviso">
+        <i class="fa-solid fa-video-slash"></i>
+        <p>No se pudo abrir la cámara. Revisa el permiso de cámara de OnTicket en los ajustes del celular, o escribe el código.</p>
+    </div>
+
+    <div class="escanerAbajo">
+
+        <div class="resultadoEscaner" id="resultadoEscaner"></div>
+
+        <div class="codigoManual">
+            <input id="codigoEscaner" placeholder="O escribe el código ONTICKET-..." autocapitalize="characters">
+            <button class="btnPrimario" onclick="codigoManualApp()"><i class="fa-solid fa-magnifying-glass"></i></button>
+        </div>
+
+    </div>
+
+</section>
+
+
+
+<!-- ========================================
      HOJA INFERIOR (bottom sheet)
 ======================================== -->
 
@@ -309,6 +351,7 @@
 <script src="lib/firebase-auth-compat.js"></script>
 <script src="lib/firebase-firestore-compat.js"></script>
 <script src="lib/qrcode.js"></script>
+<script src="lib/jsQR.js"></script>
 
 <script src="firebase-config.js"></script>
 <script src="data.js"></script>

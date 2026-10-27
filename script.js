@@ -49,7 +49,12 @@ let comprasUsuario = [];
 let eventoActual = null;
 let planoActual = null;
 let estadoVenta = null;
+let ventasActual = {};
+let reservasActual = { holds: {} };
 let dejarDeEscuchar = null;
+let dejarDeEscucharReservas = null;
+let reservaExpira = null;
+let intervaloReserva = null;
 let pisoActual = 0;
 let zonasActivas = new Set();
 let precioMaximo = Infinity;
@@ -122,7 +127,7 @@ function irASeccion(id){
 
 function renderCarrusel(){
 
-    const destacados = EVENTOS.filter(e => e.destacado);
+    const destacados = eventosPublicos().filter(e => e.destacado);
 
     $("heroSlides").innerHTML = destacados.map((ev, i) => {
 
@@ -151,6 +156,7 @@ function renderCarrusel(){
                         <span><i class="fa-regular fa-calendar"></i> ${ev.fecha}</span>
                         <span><i class="fa-regular fa-clock"></i> ${ev.hora}</span>
                         <span><i class="fa-solid fa-building"></i> ${lugar.nombre}</span>
+                        <span class="faltan"><i class="fa-solid fa-hourglass-half"></i> ${faltanTexto(ev)}</span>
                     </div>
 
                     <div class="slideActions">
@@ -291,11 +297,11 @@ const CATEGORIAS = [
 
 function renderFiltros(){
 
-    const ciudades = ["Todas", ...new Set(EVENTOS.map(e => lugarDe(e).ciudad))];
+    const ciudades = ["Todas", ...new Set(eventosPublicos().map(e => lugarDe(e).ciudad))];
 
     $("cityChips").innerHTML = ciudades.map(c => {
 
-        const n = c === "Todas" ? EVENTOS.length : EVENTOS.filter(e => lugarDe(e).ciudad === c).length;
+        const n = c === "Todas" ? eventosPublicos().length : eventosPublicos().filter(e => lugarDe(e).ciudad === c).length;
 
         return `
         <button class="chip ${c === ciudadActiva ? "active" : ""}" onclick="filtrarCiudad('${c}')">
@@ -330,7 +336,7 @@ function aplicarFiltros(){
 
     const texto = $("searchInput").value.toLowerCase().trim();
 
-    const lista = EVENTOS.filter(ev => {
+    const lista = eventosPublicos().filter(ev => {
 
         const lugar = lugarDe(ev);
 
@@ -384,6 +390,8 @@ function renderEventos(lista){
 
                 <img src="${ev.imagen}" alt="${ev.artista}">
 
+                ${ev.dia ? `<span class="eventFecha"><b>${ev.dia}</b>${ev.mes}</span>` : ""}
+
                 <span class="eventCat">${ev.categoria}</span>
 
                 <span class="eventCity"><i class="fa-solid fa-location-dot"></i> ${lugar.ciudad}</span>
@@ -393,6 +401,8 @@ function renderEventos(lista){
             <div class="eventCardInfo">
 
                 <span class="eventDate">${ev.fecha} · ${ev.hora}</span>
+
+                <span class="faltanTag">${faltanTexto(ev)}</span>
 
                 <h3>${ev.artista}</h3>
 
@@ -438,7 +448,11 @@ function abrirEvento(id){
 
     planoActual = planoDe(evento);
 
-    estadoVenta = crearEstadoVenta(evento);
+    ventasActual = {};
+
+    reservasActual = { holds: {} };
+
+    recalcularEstado();
 
     pisoActual = 0;
 
@@ -450,19 +464,34 @@ function abrirEvento(id){
 
     prepararFiltrosPlano();
 
-    // sillas vendidas en tiempo real
+    // sillas vendidas y apartadas en tiempo real
     if(dejarDeEscuchar) dejarDeEscuchar();
+
+    if(dejarDeEscucharReservas) dejarDeEscucharReservas();
+
+    dejarDeEscucharReservas = DB.escucharReservas(evento.id, reservas => {
+
+        reservasActual = reservas;
+
+        recalcularEstado();
+
+        renderSidebar();
+
+        renderPlano();
+    });
 
     dejarDeEscuchar = DB.escucharVentas(evento.id, ventas => {
 
-        estadoVenta = crearEstadoVenta(evento, ventas);
+        ventasActual = ventas;
+
+        recalcularEstado();
 
         // si alguien compró algo que estaba en mi carrito, se quita
         const antes = carrito.length;
 
         carrito = carrito.filter(i => !i.ids.some(id => estadoVenta.idGuardado(id)));
 
-        if(carrito.length < antes){
+        if(carrito.length < antes && !pagando){
 
             toast("Una de tus ubicaciones acaba de ser vendida", "fa-triangle-exclamation");
 
@@ -475,6 +504,13 @@ function abrirEvento(id){
     });
 
     mostrarPagina(eventoPage);
+}
+
+function recalcularEstado(){
+
+    if(!eventoActual) return;
+
+    estadoVenta = crearEstadoVenta(eventoActual, ventasActual, reservasActual, currentUser && currentUser.uid);
 }
 
 function renderEventoHero(){
@@ -974,6 +1010,13 @@ window.addEventListener("pointerup", () => arrastre = null);
 
 function clickAsiento(a){
 
+    if(estadoVenta.reservado(a.id)){
+
+        toast("Alguien está comprando esta silla. Intenta en unos minutos", "fa-hourglass-half");
+
+        return;
+    }
+
     if(estadoVenta.asientoVendido(a)){
 
         toast("Esta silla ya fue vendida", "fa-circle-xmark");
@@ -1236,6 +1279,8 @@ function vaciarCarrito(){
 
 function actualizarTrasCambio(animar){
 
+    actualizarReserva();
+
     renderPlano();
 
     renderCartBar(animar);
@@ -1289,10 +1334,82 @@ function renderCartBar(animar){
 
 
 /* ========================================
+   RESERVA TEMPORAL (sillas apartadas mientras se paga)
+======================================== */
+
+function iniciarContadorReserva(){
+
+    clearInterval(intervaloReserva);
+
+    const tic = () => {
+
+        if(!reservaExpira) return;
+
+        const s = Math.max(0, Math.round((reservaExpira - Date.now()) / 1000));
+
+        const txt = `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+
+        document.querySelectorAll(".reservaTiempo").forEach(el => el.innerText = txt);
+
+        document.querySelectorAll(".reservaTimer").forEach(el => {
+
+            el.classList.add("show");
+
+            el.classList.toggle("urgente", s <= 60);
+        });
+
+        if(s <= 0) reservaVencida();
+    };
+
+    tic();
+
+    intervaloReserva = setInterval(tic, 1000);
+}
+
+function detenerReserva(){
+
+    clearInterval(intervaloReserva);
+
+    reservaExpira = null;
+
+    document.querySelectorAll(".reservaTimer").forEach(el => el.classList.remove("show"));
+}
+
+function reservaVencida(){
+
+    detenerReserva();
+
+    cerrarModal("checkoutModal");
+
+    toast(`Tu reserva de ${CONFIG.minutosReserva} minutos venció. Vuelve a dar Comprar para apartarlas de nuevo.`, "fa-hourglass-end");
+}
+
+// si el carrito cambia mientras hay una reserva, se actualiza lo apartado
+function actualizarReserva(){
+
+    if(!reservaExpira || !eventoActual) return;
+
+    if(!carrito.length){
+
+        DB.liberar(eventoActual.id);
+
+        detenerReserva();
+
+        return;
+    }
+
+    const minutos = (reservaExpira - Date.now()) / 60000;
+
+    DB.reservar(eventoActual.id, carrito, minutos).catch(() => {});
+}
+
+
+
+/* ========================================
    CHECKOUT
 ======================================== */
 
-function abrirCheckout(){
+async function abrirCheckout(){
 
     if(!carrito.length){
 
@@ -1308,6 +1425,30 @@ function abrirCheckout(){
         $("authMsg").innerText = "Inicia sesión para continuar con tu compra.";
 
         abrirLogin();
+
+        return;
+    }
+
+    // correo real: para comprar, la cuenta debe estar verificada
+    if(!currentUser.verificado){
+
+        pendienteCheckout = true;
+
+        abrirVerificacion();
+
+        return;
+    }
+
+    // se apartan las ubicaciones mientras paga
+    try{
+
+        reservaExpira = await DB.reservar(eventoActual.id, carrito, CONFIG.minutosReserva);
+
+        iniciarContadorReserva();
+
+    }catch(e){
+
+        toast(esc(e.message), "fa-triangle-exclamation");
 
         return;
     }
@@ -1580,7 +1721,20 @@ async function confirmarCompra(){
             compra.factura = await crearFactura(numero, datosFactura(), compra.total, compra.codigo);
         }
 
+        if(!reservaExpira || reservaExpira < Date.now()){
+
+            throw new Error("Tu reserva venció. Vuelve a intentarlo.");
+        }
+
         const guardada = await DB.comprar(compra);
+
+        detenerReserva();
+
+        // boletas (y factura, si la pidió) a su correo
+        DB.encolarCorreo(
+            [currentUser.email, guardada.factura && guardada.factura.adquiriente.correo],
+            correoCompra(guardada, CONFIG.sitioWeb || location.href.replace(/[^/]*$/, ""))
+        ).catch(() => {});
 
         carrito = [];
 
@@ -1886,69 +2040,8 @@ async function eliminarCompra(index){
 
 
 /* ========================================
-   ADMIN PANEL
+   ADMIN PANEL → admin.js
 ======================================== */
-
-async function abrirAdminPanel(){
-
-    mostrarPagina(adminPage);
-
-    $("adminTableBody").innerHTML = `<tr><td colspan="8">Cargando...</td></tr>`;
-
-    try{
-
-        renderAdminCompras(await DB.todasLasCompras());
-
-    }catch(e){
-
-        $("adminTableBody").innerHTML = `<tr><td colspan="8">No tienes permisos para ver las compras.</td></tr>`;
-    }
-}
-
-function renderAdminCompras(compras){
-
-    let totalVentas = 0, totalServicio = 0, facturas = 0;
-
-    const filas = compras.map(compra => {
-
-        totalVentas += compra.total;
-
-        totalServicio += (compra.servicio || 0) + (compra.iva || 0);
-
-        if(compra.factura) facturas++;
-
-        return `
-        <tr class="adminRow">
-            <td>${esc(compra.usuario)}<br><small>${esc(compra.email)}</small></td>
-            <td>${esc(compra.evento || "Andrés Cepeda Tour 2025")}</td>
-            <td>${fmt(compra.subtotal ?? compra.total)}</td>
-            <td>${fmt((compra.servicio || 0) + (compra.iva || 0))}</td>
-            <td><b>${fmt(compra.total)}</b></td>
-            <td>${esc(compra.metodo)}</td>
-            <td>${compra.factura ? esc(compra.factura.numero) : "—"}</td>
-            <td class="mono">${esc(compra.codigo)}</td>
-        </tr>`;
-
-    }).join("");
-
-    $("adminTableBody").innerHTML = filas || `<tr><td colspan="8">Aún no hay compras.</td></tr>`;
-
-    $("adminStats").innerHTML = `
-        <div><small>Ventas totales</small><b>${fmt(totalVentas)}</b></div>
-        <div><small>Compras</small><b>${compras.length}</b></div>
-        <div><small>Servicio + IVA</small><b>${fmt(totalServicio)}</b></div>
-        <div><small>Facturas electrónicas</small><b>${facturas}</b></div>`;
-}
-
-function buscarCompraAdmin(){
-
-    const input = $("searchCompra").value.toLowerCase();
-
-    document.querySelectorAll(".adminRow").forEach(fila => {
-
-        fila.style.display = fila.innerText.toLowerCase().includes(input) ? "" : "none";
-    });
-}
 
 
 
@@ -2103,6 +2196,8 @@ async function registrarUsuario(){
 
         despuesDeEntrar();
 
+        if(!usuario.verificado) abrirVerificacion();
+
     }catch(e){
 
         toast(esc(e.message), "fa-triangle-exclamation");
@@ -2129,6 +2224,97 @@ async function iniciarSesion(){
     }
 }
 
+async function loginConGoogle(){
+
+    try{
+
+        const usuario = await DB.loginGoogle();
+
+        toast(`¡Hola, ${esc(usuario.name)}!`, "fa-hand");
+
+        despuesDeEntrar();
+
+    }catch(e){
+
+        toast(esc(e.message), "fa-circle-xmark");
+    }
+}
+
+async function olvideClave(){
+
+    const email = $("emailInput").value.trim();
+
+    if(!email){
+
+        toast("Escribe tu correo arriba y vuelve a tocar \"¿Olvidaste tu contraseña?\"", "fa-envelope");
+
+        $("emailInput").focus();
+
+        return;
+    }
+
+    try{
+
+        await DB.recuperarClave(email);
+
+        toast(`Te enviamos un correo a ${esc(email)} para crear una contraseña nueva`, "fa-envelope-circle-check");
+
+    }catch(e){
+
+        toast(esc(e.message), "fa-circle-xmark");
+    }
+}
+
+function abrirVerificacion(){
+
+    $("verificaCorreo").innerText = currentUser ? currentUser.email : "";
+
+    abrirModal("verificaModal");
+}
+
+async function yaVerifique(){
+
+    const u = await DB.refrescarUsuario();
+
+    if(u && u.verificado){
+
+        currentUser = u;
+
+        recalcularEstado();
+
+        actualizarUsuario();
+
+        cerrarModal("verificaModal");
+
+        toast("¡Correo verificado! Ya puedes comprar", "fa-circle-check");
+
+        if(pendienteCheckout){
+
+            pendienteCheckout = false;
+
+            abrirCheckout();
+        }
+
+    }else{
+
+        toast("Aún no aparece verificado. Abre el enlace del correo (revisa también Spam)", "fa-envelope");
+    }
+}
+
+async function reenviarVerificacion(){
+
+    try{
+
+        await DB.reenviarVerificacion();
+
+        toast("Te reenviamos el correo de verificación", "fa-envelope-circle-check");
+
+    }catch(e){
+
+        toast(esc(e.message), "fa-circle-xmark");
+    }
+}
+
 function despuesDeEntrar(){
 
     $("passwordInput").value = "";
@@ -2143,7 +2329,14 @@ function despuesDeEntrar(){
 
     if(authMode === "register") toggleAuthMode();
 
-    if(continuar) abrirCheckout();
+    recalcularEstado();
+
+    if(continuar){
+
+        pendienteCheckout = true;
+
+        abrirCheckout();
+    }
 }
 
 async function cerrarSesion(){
@@ -2169,7 +2362,9 @@ function actualizarUsuario(){
 
         btnLogin.onclick = cerrarSesion;
 
-        adminBtn.style.display = currentUser.role === "admin" ? "flex" : "none";
+        adminBtn.style.display = ["admin", "taquilla"].includes(currentUser.role) ? "flex" : "none";
+
+        $("bannerVerificar").classList.toggle("show", !currentUser.verificado);
 
     }else{
 
@@ -2180,6 +2375,8 @@ function actualizarUsuario(){
         btnLogin.onclick = abrirLogin;
 
         adminBtn.style.display = "none";
+
+        $("bannerVerificar").classList.remove("show");
     }
 }
 
@@ -2214,11 +2411,35 @@ DB.onUsuario(usuario => {
     currentUser = usuario;
 
     actualizarUsuario();
+
+    recalcularEstado();
 });
 
-renderCarrusel();
+function renderInicio(){
 
-aplicarFiltros();
+    renderCarrusel();
+
+    aplicarFiltros();
+}
+
+renderInicio();
+
+// eventos creados por el administrador (Firebase); mientras tanto se usan los guardados
+sincronizarEventos().then(cambio => {
+
+    if(cambio){
+
+        renderInicio();
+
+        iniciarCarrusel();
+    }
+});
+
+// instalable como app (PWA), útil en iPhone
+if("serviceWorker" in navigator && location.protocol.startsWith("http")){
+
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+}
 
 // QR que apunta a la descarga del APK (en Vercel apunta al dominio de la web)
 $("qrDescarga").src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=${encodeURIComponent(new URL("descargas/OnTicket.apk", location.href).href)}`;

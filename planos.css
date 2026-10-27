@@ -91,3 +91,29 @@
 /* filtros */
 .dim{ opacity:0.12; pointer-events:none; }
 .oculto{ opacity:0.04; pointer-events:none; }
+
+
+/* apartada por otra persona que está pagando */
+.seat.held circle{ fill:#5b4a2e; stroke:#f5b400; stroke-width:1.5; stroke-dasharray:2 2; }
+.seat.held text{ fill:#c9b37a; }
+.palco.held rect{ fill:#5b4a2e; stroke:#f5b400; stroke-dasharray:3 3; }
+
+/* mapa de calor (panel de estadísticas): el plano en gris y el calor encima */
+.modoCalor .seat circle,
+.modoCalor .seat.sold circle{ fill:#262830; stroke:none; }
+.modoCalor .seat text{ display:none; }
+.modoCalor .palco rect,
+.modoCalor .palco.sold rect{ fill:#262830; stroke:#33353f; filter:none; }
+.modoCalor .palco text{ fill:#5f626e; }
+.modoCalor .ga rect,
+.modoCalor .ga.sold rect{ fill:#1d1f26; stroke:#33353f; }
+.modoCalor .ga text{ fill:#5f626e; }
+.modoCalor .band rect{ fill-opacity:0.06; }
+.modoCalor .capaCalor{ pointer-events:none; mix-blend-mode:screen; }
+.modoCalor .seat,
+.modoCalor .palco,
+.modoCalor .ga{ cursor:default; }
+
+.modoCalor .palco.ind rect,
+.modoCalor .palco.sel rect{ fill:#262830; stroke:#33353f; filter:none; }
+.modoCalor .palco.ind text{ fill:#5f626e; }

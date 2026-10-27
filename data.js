@@ -13,7 +13,17 @@ const CONFIG = {
     ivaServicio: 0.19,
 
     // Máximo de boletas por compra en zonas de general
-    maxGeneral: 10
+    maxGeneral: 10,
+
+    // Minutos que quedan apartadas las sillas mientras se paga
+    minutosReserva: 10,
+
+    // Dirección pública de la web (para los enlaces e imágenes de los correos que envía la app)
+    sitioWeb: "",
+
+    // Eventos de demostración: si la fecha ya pasó, se corre al año siguiente
+    // (así los eventos de ejemplo siguen vigentes sin tener que cambiarlos)
+    moverEventosPasados: true
 };
 
 
@@ -64,7 +74,10 @@ const LUGARES = {
 
 
 /* ========================================
-   EVENTOS
+   EVENTOS DE EJEMPLO
+   Se usan mientras no haya eventos creados desde el panel de
+   administrador (que se guardan en Firebase).
+   fechaISO = fecha y hora real del evento (año-mes-díaThora:min)
 ======================================== */
 
 const EVENTOS = [
@@ -75,8 +88,7 @@ const EVENTOS = [
         titulo: "Tour 2025",
         categoria: "Conciertos",
         lugar: "malocas",
-        fecha: "Sábado 28 de noviembre",
-        hora: "7:00 PM",
+        fechaISO: "2026-11-28T19:00",
         imagen: "img/cepeda.jpeg",
         video: "video/cepeda.mp4",
         descripcion: "Una noche de baladas, romance y los grandes éxitos de Cepeda en vivo. Vive la experiencia completa desde la mejor ubicación.",
@@ -89,8 +101,7 @@ const EVENTOS = [
         titulo: "Más Cerca de Ti · World Tour",
         categoria: "Conciertos",
         lugar: "malocas",
-        fecha: "Sábado 1 de noviembre",
-        hora: "8:00 PM",
+        fechaISO: "2025-11-01T20:00",
         imagen: "img/marcoantonio.jpg",
         descripcion: "El Buki llega a Villavicencio con su gira mundial. Un concierto para cantar de principio a fin.",
         destacado: true
@@ -102,8 +113,7 @@ const EVENTOS = [
         titulo: "Un Merengazo de 30 años",
         categoria: "Conciertos",
         lugar: "capachos",
-        fecha: "Viernes 4 de septiembre",
-        hora: "9:00 PM",
+        fechaISO: "2026-09-04T21:00",
         imagen: "img/rikarena.jpg",
         descripcion: "30 años de merengue en una sola noche. Palcos para compartir con tu parche o puestos individuales para vivirlo a tu manera.",
         destacado: true
@@ -115,8 +125,7 @@ const EVENTOS = [
         titulo: "30 años Bien Jediondos · con Boyacoman",
         categoria: "Humor",
         lugar: "santiagoLondono",
-        fecha: "Sábado 18 de abril",
-        hora: "8:00 PM",
+        fechaISO: "2026-04-18T20:00",
         imagen: "img/donjediondo.jpeg",
         descripcion: "Don Jediondo celebra 30 años de humor junto a Boyacoman. Apertura de puertas 7:00 PM.",
         destacado: false
@@ -128,8 +137,7 @@ const EVENTOS = [
         titulo: "La Última Copa · con Alci Acosta y Camilo Méndez",
         categoria: "Conciertos",
         lugar: "sikuani",
-        fecha: "Sábado 6 de junio",
-        hora: "8:00 PM",
+        fechaISO: "2026-06-06T20:00",
         imagen: "img/luisalfonso.jpeg",
         descripcion: "Música popular y despecho en vivo. Brindemos la última copa juntos.",
         destacado: true

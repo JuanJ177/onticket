@@ -50,13 +50,158 @@ function clamp(v, min, max){
 
 
 /* ========================================
-   EVENTOS, LUGARES Y PRECIOS
+   EVENTOS Y FECHAS
 ======================================== */
+
+// Eventos de ejemplo (data.js) por si no hay eventos en la nube
+const EVENTOS_EJEMPLO = EVENTOS.map(e => ({ ...e }));
 
 function getEvento(id){
 
     return EVENTOS.find(e => e.id === id);
 }
+
+// Calcula la fecha real del evento. Si ya pasó y CONFIG.moverEventosPasados
+// está activo, la corre al año siguiente (eventos de demostración).
+function fechaReal(evento){
+
+    if(!evento.fechaISO) return null;
+
+    const f = new Date(evento.fechaISO);
+
+    if(CONFIG.moverEventosPasados){
+
+        const hoy = new Date();
+
+        hoy.setHours(0, 0, 0, 0);
+
+        while(f < hoy) f.setFullYear(f.getFullYear() + 1);
+    }
+
+    return f;
+}
+
+function capitalizar(t){
+
+    return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+// Completa los textos de fecha y hora a partir de fechaISO
+function normalizarEvento(evento){
+
+    const f = fechaReal(evento);
+
+    if(f){
+
+        evento.fechaReal = f;
+
+        evento.fecha = capitalizar(f.toLocaleDateString("es-CO", { weekday:"long", day:"numeric", month:"long", year:"numeric" }));
+
+        evento.hora = f.toLocaleTimeString("en-US", { hour:"numeric", minute:"2-digit" });
+
+        evento.dia = f.getDate();
+
+        evento.mes = f.toLocaleDateString("es-CO", { month:"short" }).replace(".", "").toUpperCase();
+    }
+
+    return evento;
+}
+
+// Reemplaza la lista de eventos (por ejemplo, con los de Firebase) y los ordena por fecha
+function usarEventos(lista){
+
+    const nuevos = lista.map(e => normalizarEvento({ ...e }));
+
+    nuevos.sort((a, b) => (a.fechaReal || 0) - (b.fechaReal || 0));
+
+    EVENTOS.splice(0, EVENTOS.length, ...nuevos);
+}
+
+// Eventos que ve el público (los ocultos solo los ve el administrador)
+function eventosPublicos(){
+
+    return EVENTOS.filter(e => e.visible !== false);
+}
+
+function diasParaEvento(evento){
+
+    if(!evento.fechaReal) return null;
+
+    const hoy = new Date();
+
+    hoy.setHours(0, 0, 0, 0);
+
+    const dia = new Date(evento.fechaReal);
+
+    dia.setHours(0, 0, 0, 0);
+
+    return Math.round((dia - hoy) / 86400000);
+}
+
+function faltanTexto(evento){
+
+    const d = diasParaEvento(evento);
+
+    if(d === null) return "";
+
+    if(d <= 0) return "¡Es hoy!";
+
+    if(d === 1) return "¡Es mañana!";
+
+    if(d < 60) return `Faltan ${d} días`;
+
+    return `Faltan ${Math.round(d / 30)} meses`;
+}
+
+// Trae los eventos de la nube (los que crea el administrador).
+// Guarda una copia en el dispositivo para abrir rápido y sin internet.
+// Devuelve true si la lista cambió.
+async function sincronizarEventos(){
+
+    const antes = JSON.stringify(EVENTOS.map(e => e.id + e.fechaISO + (e.visible !== false)));
+
+    let lista = null;
+
+    try{
+
+        lista = await DB.cargarEventos();
+
+        try{
+
+            if(lista) localStorage.setItem("eventosCache", JSON.stringify(lista));
+
+            else localStorage.removeItem("eventosCache");
+
+        }catch(e){}
+
+    }catch(e){
+
+        // sin conexión: se usa la última copia guardada
+        try{ lista = JSON.parse(localStorage.getItem("eventosCache") || "null"); }catch(x){}
+    }
+
+    usarEventos(lista || EVENTOS_EJEMPLO);
+
+    return JSON.stringify(EVENTOS.map(e => e.id + e.fechaISO + (e.visible !== false))) !== antes || !!lista;
+}
+
+// al abrir, se muestra la última copia guardada (si hay) mientras llega la nube
+try{
+
+    const cache = JSON.parse(localStorage.getItem("eventosCache") || "null");
+
+    usarEventos(cache || EVENTOS);
+
+}catch(e){
+
+    usarEventos(EVENTOS);
+}
+
+
+
+/* ========================================
+   LUGARES Y PRECIOS
+======================================== */
 
 function lugarDe(evento){
 
@@ -82,7 +227,7 @@ function precioPersona(evento, zonaId){
 
     if(zona.tipo === "palco"){
 
-        return zona.precioPuesto || precioZona(evento, zonaId) / 10;
+        return (evento.preciosPuesto && evento.preciosPuesto[zonaId]) || zona.precioPuesto || precioZona(evento, zonaId) / 10;
     }
 
     return precioZona(evento, zonaId);
@@ -135,7 +280,7 @@ function calcularCostos(items){
    (viene de la base de datos: Firebase o localStorage)
 ======================================== */
 
-function crearEstadoVenta(evento, ventas = {}){
+function crearEstadoVenta(evento, ventas = {}, reservas = {}, uid = null){
 
     const plano = planoDe(evento);
 
@@ -143,14 +288,49 @@ function crearEstadoVenta(evento, ventas = {}){
 
     const general = ventas.general || {};
 
-    // las sillas "vendidas" de ejemplo se simulan con un azar estable
-    const vendido = (id, tasa) => azar(evento.id + "|" + id) < tasa || guardados.has(id);
+    // sillas apartadas por OTRAS personas que están pagando (reserva vigente)
+    const ahora = Date.now();
+
+    const holds = (reservas && reservas.holds) || {};
+
+    const apartados = new Set();
+
+    const generalApartado = {};
+
+    Object.entries(holds).forEach(([clave, h]) => {
+
+        if(!h || h.expira <= ahora || h.uid === uid) return;
+
+        if(h.general){
+
+            generalApartado[h.general] = (generalApartado[h.general] || 0) + (h.cantidad || 0);
+
+        }else{
+
+            apartados.add(clave);
+        }
+    });
+
+    // Ocupación de demostración: cada localidad de cada evento tiene su propio
+    // nivel de ventas (como en la vida real, unas zonas se venden más que otras).
+    // Se simula con un azar estable; las compras reales se suman encima.
+    const tasaZona = zonaId => 0.1 + 0.7 * azar(evento.id + "|zona|" + zonaId);
+
+    const vendidoReal = (id, tasa) => azar(evento.id + "|" + id) < tasa || guardados.has(id);
+
+    const vendido = (id, tasa) => vendidoReal(id, tasa) || apartados.has(id);
 
     const estado = {
 
         idGuardado: id => guardados.has(id),
 
-        asientoVendido: a => vendido(a.id, 0.2),
+        // apartada por otra persona que está pagando (se pinta distinto a "vendida")
+        reservado: id => apartados.has(id) && !guardados.has(id),
+
+        // vendida de verdad o de demostración (sin contar reservas)
+        vendidoReal,
+
+        asientoVendido: a => vendido(a.id, tasaZona(a.zona)),
 
         puestosPalco(p){
 
@@ -160,7 +340,7 @@ function crearEstadoVenta(evento, ventas = {}){
 
                 const id = `${p.id}-${n}`;
 
-                lista.push({ id, n, vendido: vendido(id, 0.35) });
+                lista.push({ id, n, vendido: vendido(id, tasaZona(p.zona)), reservado: estado.reservado(id) });
             }
 
             return lista;
@@ -173,14 +353,14 @@ function crearEstadoVenta(evento, ventas = {}){
                 return estado.puestosPalco(p).every(x => x.vendido);
             }
 
-            return vendido(p.id, 0.3);
+            return vendido(p.id, tasaZona(p.zona));
         },
 
         generalDisponible(g){
 
             const capacidad = g.capacidad || plano.zonas[g.zona].capacidad;
 
-            const ocupados = Math.floor(capacidad * 0.55 * azar(evento.id + "|" + g.id)) + (general[g.id] || 0);
+            const ocupados = Math.floor(capacidad * tasaZona(g.zona) * (0.75 + 0.25 * azar(evento.id + "|" + g.id))) + (general[g.id] || 0) + (generalApartado[g.id] || 0);
 
             return Math.max(0, capacidad - ocupados);
         },
@@ -367,6 +547,7 @@ function planoSVG(evento, pisoIdx, estado, carrito, filtro){
             p.individual ? "ind" : "",
             visible ? "" : "dim",
             vendido ? "sold" : "",
+            !p.individual && estado.reservado(p.id) ? "held" : "",
             vendido && soloDisp ? "oculto" : "",
             enCarro ? "sel" : ""
         ].join(" ");
@@ -394,15 +575,18 @@ function planoSVG(evento, pisoIdx, estado, carrito, filtro){
 
         const vendido = estado.asientoVendido(a);
 
+        const apartada = estado.reservado(a.id);
+
         const clases = [
             "seat",
             zonaVisible(a.zona) && !soloInd ? "" : "dim",
             vendido ? "sold" : "",
+            apartada ? "held" : "",
             vendido && soloDisp ? "oculto" : "",
             enCarrito.has(a.id) ? "sel" : ""
         ].join(" ");
 
-        const tip = `<b>${z.nombre}</b><br>Fila ${a.fila} · Silla ${a.num}<br>${vendido ? "Vendido" : fmt(precioZona(evento, a.zona))}`;
+        const tip = `<b>${z.nombre}</b><br>Fila ${a.fila} · Silla ${a.num}<br>${apartada ? "Alguien la está comprando" : vendido ? "Vendido" : fmt(precioZona(evento, a.zona))}`;
 
         html += `<g class="${clases}" data-kind="seat" data-id="${a.id}" data-tip="${esc(tip)}" style="--c:${z.color};--t:${z.texto}">
             <circle cx="${a.x}" cy="${a.y}" r="10"/>
@@ -514,6 +698,8 @@ function crearCompra(evento, carrito, metodo, factura){
         eventoId: evento.id,
         evento: `${evento.artista} · ${evento.titulo}`,
         fecha: `${evento.fecha} · ${evento.hora}`,
+        fechaEvento: evento.fechaReal ? evento.fechaReal.toISOString() : null,
+        ingresos: 0,
         lugar: `${lugar.nombre}, ${lugar.ciudad}`,
         items: carrito.map(i => ({ ...i })),
         entradas: carrito.map(i => i.etiqueta),
@@ -544,14 +730,171 @@ function segundosQR(){
     return QR_PERIODO - Math.floor((Date.now() / 1000) % QR_PERIODO);
 }
 
+function firmaQR(codigo, v){
+
+    return Math.floor(azar(`${codigo}|${v}|onticket`) * 0xffffff).toString(16).padStart(6, "0");
+}
+
 function qrDinamico(codigo){
 
     const v = ventanaQR();
 
-    const firma = Math.floor(azar(`${codigo}|${v}|onticket`) * 0xffffff).toString(16).padStart(6, "0");
-
-    return `${codigo}.${v}.${firma}`;
+    return `${codigo}.${v}.${firmaQR(codigo, v)}`;
 }
+
+
+
+/* ========================================
+   VALIDACIÓN DE ENTRADA (TAQUILLA)
+======================================== */
+
+// Lee el texto de un QR. Devuelve { codigo, valido, motivo }
+//  - QR dinámico:  CODIGO.ventana.firma  (vence en ~1 minuto)
+//  - Código escrito a mano: solo CODIGO (validación manual del personal)
+function leerQR(texto){
+
+    texto = String(texto || "").trim();
+
+    const partes = texto.split(".");
+
+    if(partes.length === 3){
+
+        const [codigo, v, firma] = partes;
+
+        const actual = ventanaQR();
+
+        const ventana = Number(v);
+
+        if(firmaQR(codigo, ventana) !== firma){
+
+            return { codigo, valido:false, motivo:"El QR no es auténtico (firma inválida)" };
+        }
+
+        if(ventana < actual - 2 || ventana > actual + 1){
+
+            return { codigo, valido:false, motivo:"QR vencido: parece una captura de pantalla. Pide abrir la boleta en la app." };
+        }
+
+        return { codigo, valido:true, dinamico:true };
+    }
+
+    if(/^ONTICKET-\d+-\d+$/i.test(texto)){
+
+        return { codigo: texto.toUpperCase(), valido:true, dinamico:false };
+    }
+
+    return { codigo:null, valido:false, motivo:"Este QR no es una boleta de OnTicket" };
+}
+
+function personasCompra(compra){
+
+    if(compra.personas) return compra.personas;
+
+    return (compra.items || []).reduce((s, i) => s + (i.tipo === "general" ? i.cantidad : i.personas || 1), 0) || (compra.entradas || []).length || 1;
+}
+
+// Busca la compra del QR y dice si puede entrar
+async function validarEntrada(texto){
+
+    const qr = leerQR(texto);
+
+    if(!qr.valido) return { ok:false, motivo: qr.motivo, codigo: qr.codigo };
+
+    const compra = await DB.buscarCompra(qr.codigo);
+
+    if(!compra) return { ok:false, motivo:"No existe una compra con este código", codigo: qr.codigo };
+
+    const total = personasCompra(compra);
+
+    const usados = compra.ingresos || 0;
+
+    if(usados >= total){
+
+        const hora = compra.ultimoIngreso ? " · último ingreso " + new Date(compra.ultimoIngreso).toLocaleTimeString("es-CO") : "";
+
+        return { ok:false, compra, total, usados, codigo: qr.codigo, motivo:`Esta boleta ya ingresó completa (${usados} de ${total})${hora}` };
+    }
+
+    return { ok:true, compra, total, usados, restantes: total - usados, manual: !qr.dinamico, codigo: qr.codigo };
+}
+
+
+
+/* ========================================
+   ESCÁNER DE QR CON LA CÁMARA (requiere jsQR)
+   Devuelve una función para apagar la cámara.
+======================================== */
+
+async function iniciarEscaner(video, alLeer){
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false
+    });
+
+    video.srcObject = stream;
+
+    video.setAttribute("playsinline", "");
+
+    video.muted = true;
+
+    await video.play();
+
+    const canvas = document.createElement("canvas");
+
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+    let activo = true;
+
+    let ultimo = "";
+
+    let ultimoTiempo = 0;
+
+    const leer = () => {
+
+        if(!activo) return;
+
+        if(video.readyState >= 2 && video.videoWidth){
+
+            // se analiza una versión reducida (más rápido en celulares)
+            const escala = Math.min(1, 640 / video.videoWidth);
+
+            canvas.width = Math.round(video.videoWidth * escala);
+
+            canvas.height = Math.round(video.videoHeight * escala);
+
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+            const qr = jsQR(img.data, img.width, img.height, { inversionAttempts: "dontInvert" });
+
+            // evita procesar el mismo QR muchas veces seguidas
+            if(qr && qr.data && (qr.data !== ultimo || Date.now() - ultimoTiempo > 4000)){
+
+                ultimo = qr.data;
+
+                ultimoTiempo = Date.now();
+
+                alLeer(qr.data);
+            }
+        }
+
+        requestAnimationFrame(leer);
+    };
+
+    requestAnimationFrame(leer);
+
+    return () => {
+
+        activo = false;
+
+        stream.getTracks().forEach(t => t.stop());
+
+        video.srcObject = null;
+    };
+}
+
 
 
 
@@ -658,4 +1001,44 @@ function htmlFactura(compra, logoUrl){
     <p class="cufe"><b>CUFE:</b> ${esc(f.cufe)}</p>
     <button onclick="window.print()">Imprimir / Guardar PDF</button>
     </body></html>`;
+}
+
+
+
+/* ========================================
+   CORREO DE CONFIRMACIÓN (boletas + factura)
+   Se guarda en la colección "correos" de Firebase y la extensión
+   "Trigger Email" lo envía (requiere plan Blaze).
+======================================== */
+
+function correoCompra(compra, sitio){
+
+    const filas = (compra.items || []).map(i => `<tr><td style="padding:6px 0">${esc(i.etiqueta)}</td><td align="right">${fmt(i.precio * i.cantidad)}</td></tr>`).join("");
+
+    const f = compra.factura;
+
+    return {
+        subject: `${f ? "Factura " + f.numero + " · " : ""}Tus boletas para ${compra.evento}`,
+        html: `
+        <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#222">
+            <div style="background:#0e0e12;padding:20px;border-radius:12px 12px 0 0;text-align:center">
+                <img src="${sitio}img/logo.png" alt="OnTicket" style="height:40px">
+            </div>
+            <div style="border:1px solid #eee;border-top:0;padding:24px;border-radius:0 0 12px 12px">
+                <h2 style="margin:0 0 4px">¡Tu experiencia está asegurada! 🎉</h2>
+                <p style="color:#666;margin:0 0 16px">${esc(compra.evento)}<br>${esc(compra.fecha)}<br>${esc(compra.lugar)}</p>
+                <table width="100%" style="font-size:14px;border-collapse:collapse">${filas}
+                    <tr><td style="padding:6px 0;color:#666">Cargo por servicio</td><td align="right">${fmt(compra.servicio)}</td></tr>
+                    <tr><td style="padding:6px 0;color:#666">IVA sobre el servicio</td><td align="right">${fmt(compra.iva)}</td></tr>
+                    <tr><td style="padding:10px 0;font-weight:bold;border-top:2px solid #222">Total</td><td align="right" style="font-weight:bold;border-top:2px solid #222">${fmt(compra.total)}</td></tr>
+                </table>
+                <p style="background:#fff4e9;padding:12px;border-radius:8px;font-size:14px">
+                    Código de compra: <b>${esc(compra.codigo)}</b><br>
+                    Para entrar, abre tu boleta en la app o en la web (Mis boletas): el QR cambia cada 30 segundos.
+                </p>
+                ${f ? `<p style="font-size:13px;color:#666">Factura electrónica <b>${esc(f.numero)}</b> a nombre de ${esc(f.adquiriente.nombre)}<br>CUFE: <span style="word-break:break-all">${esc(f.cufe)}</span></p>` : ""}
+                <p style="font-size:12px;color:#999">OnTicket · Vive la mejor experiencia</p>
+            </div>
+        </div>`
+    };
 }

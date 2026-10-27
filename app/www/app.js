@@ -39,6 +39,11 @@ let evento = null;
 let plano = null;
 let estado = null;
 let dejarDeEscuchar = null;
+let dejarDeEscucharReservas = null;
+let ventasEvento = {};
+let reservasEvento = { holds: {} };
+let reservaExpira = null;
+let intervaloReserva = null;
 let piso = 0;
 let zonasFiltro = new Set();
 let zoom = { s:1, x:0, y:0 };
@@ -129,12 +134,16 @@ function cerrarCapa(capa){
 
     if(capa.id === "pantalla-boleta") clearInterval(intervaloQR);
 
-    if(capa.id === "pantalla-plano" && dejarDeEscuchar){
+    if(capa.id === "pantalla-plano"){
 
-        dejarDeEscuchar();
+        if(dejarDeEscuchar) dejarDeEscuchar();
 
-        dejarDeEscuchar = null;
+        if(dejarDeEscucharReservas) dejarDeEscucharReservas();
+
+        dejarDeEscuchar = dejarDeEscucharReservas = null;
     }
+
+    if(capa.id === "pantalla-escaner") apagarEscaner();
 }
 
 function abrirPantalla(id){
@@ -256,7 +265,7 @@ function renderExplorar(){
 
 function renderChips(){
 
-    const ciudades = ["Todas", ...new Set(EVENTOS.map(e => lugarDe(e).ciudad))];
+    const ciudades = ["Todas", ...new Set(eventosPublicos().map(e => lugarDe(e).ciudad))];
 
     $("chipsCiudad").innerHTML = ciudades.map(c => `
         <button class="chip ${c === ciudad ? "active" : ""}" onclick="ciudad='${c}'; renderChips(); renderEventos();">
@@ -269,13 +278,14 @@ function renderChips(){
 
 function renderDestacados(){
 
-    const lista = EVENTOS.filter(e => e.destacado);
+    const lista = eventosPublicos().filter(e => e.destacado);
 
     $("destacados").innerHTML = lista.map(ev => `
         <article class="destacado" onclick="abrirEvento('${ev.id}')">
             <img src="${ev.imagen}" alt="">
             <div class="destacadoInfo">
-                <span class="tag">${lugarDe(ev).ciudad} · ${ev.fecha}</span>
+                <span class="tag">${lugarDe(ev).ciudad} · ${ev.dia || ""} ${ev.mes || ""}</span>
+                <span class="tag verde">${faltanTexto(ev)}</span>
                 <h3>${ev.artista}</h3>
                 <p>${ev.titulo}</p>
                 <span class="desde">Desde <b>${fmt(precioDesde(ev))}</b></span>
@@ -319,7 +329,7 @@ function renderEventos(){
 
     const texto = $("buscar").value.toLowerCase().trim();
 
-    const lista = EVENTOS.filter(ev => {
+    const lista = eventosPublicos().filter(ev => {
 
         const lugar = lugarDe(ev);
 
@@ -339,6 +349,7 @@ function renderEventos(){
             <img src="${ev.imagen}" alt="">
             <div>
                 <span class="fecha">${ev.fecha} · ${ev.hora}</span>
+                <span class="faltan">${faltanTexto(ev)}</span>
                 <h3>${ev.artista}</h3>
                 <p><i class="fa-solid fa-location-dot"></i> ${lugar.nombre}, ${lugar.ciudad}</p>
                 <span class="desde">Desde <b>${fmt(precioDesde(ev))}</b></span>
@@ -369,7 +380,11 @@ function abrirEvento(id){
 
     plano = planoDe(ev);
 
-    estado = crearEstadoVenta(ev);
+    ventasEvento = {};
+
+    reservasEvento = { holds: {} };
+
+    recalcularEstado();
 
     const lugar = lugarDe(ev);
 
@@ -387,6 +402,8 @@ function abrirEvento(id){
             <h1>${ev.artista}</h1>
 
             <h3>${ev.titulo}</h3>
+
+            <span class="faltan grande"><i class="fa-solid fa-hourglass-half"></i> ${faltanTexto(ev)}</span>
 
             <div class="datosEvento">
                 <div><i class="fa-regular fa-calendar"></i><span><b>${ev.fecha}</b><small>Fecha</small></span></div>
@@ -494,23 +511,41 @@ function abrirPlano(zonaId){
 
     abrirPantalla("pantalla-plano");
 
-    // sillas vendidas en tiempo real
+    // sillas vendidas y apartadas en tiempo real
     if(dejarDeEscuchar) dejarDeEscuchar();
+
+    if(dejarDeEscucharReservas) dejarDeEscucharReservas();
+
+    dejarDeEscucharReservas = DB.escucharReservas(evento.id, reservas => {
+
+        reservasEvento = reservas;
+
+        recalcularEstado();
+
+        renderPlanoCompleto();
+    });
 
     dejarDeEscuchar = DB.escucharVentas(evento.id, ventas => {
 
-        estado = crearEstadoVenta(evento, ventas);
+        ventasEvento = ventas;
+
+        recalcularEstado();
 
         const antes = carrito.length;
 
         carrito = carrito.filter(i => !i.ids.some(id => estado.idGuardado(id)));
 
-        if(carrito.length < antes) toast("Una de tus ubicaciones acaba de ser vendida", "fa-triangle-exclamation");
+        if(carrito.length < antes && !pagando) toast("Una de tus ubicaciones acaba de ser vendida", "fa-triangle-exclamation");
 
         renderPlanoCompleto();
 
         renderZonasEvento();
     });
+}
+
+function recalcularEstado(){
+
+    if(evento) estado = crearEstadoVenta(evento, ventasEvento, reservasEvento, usuario && usuario.uid);
 }
 
 function renderPlanoCompleto(){
@@ -766,6 +801,13 @@ function resetZoom(){
 
 function tocarAsiento(a){
 
+    if(estado.reservado(a.id)){
+
+        toast("Alguien está comprando esta silla. Intenta en unos minutos", "fa-hourglass-half");
+
+        return;
+    }
+
     if(estado.asientoVendido(a)){
 
         toast("Esta silla ya fue vendida", "fa-circle-xmark");
@@ -798,6 +840,8 @@ function quitar(key){
 }
 
 function actualizarSeleccion(){
+
+    actualizarReserva();
 
     renderPlano();
 
@@ -1000,13 +1044,35 @@ const METODOS = [
     ["Mastercard", "img/mastercard.png"]
 ];
 
-function abrirCheckout(){
+async function abrirCheckout(){
 
     if(!carrito.length) return;
 
     if(!usuario){
 
         abrirAuth("Inicia sesión para terminar tu compra", () => abrirCheckout());
+
+        return;
+    }
+
+    // correo real: para comprar, la cuenta debe estar verificada
+    if(!usuario.verificado){
+
+        abrirVerificacion(() => abrirCheckout());
+
+        return;
+    }
+
+    // se apartan las ubicaciones mientras paga
+    try{
+
+        reservaExpira = await DB.reservar(evento.id, carrito, CONFIG.minutosReserva);
+
+        iniciarContadorReserva();
+
+    }catch(e){
+
+        toast(esc(e.message), "fa-triangle-exclamation");
 
         return;
     }
@@ -1127,6 +1193,7 @@ function renderCheckout(){
         : `<i class="fa-solid fa-lock"></i> Pagar ${fmt(c.total)}`;
 
     abrirSheet(`
+        <div class="reservaApp ${reservaExpira ? "show" : ""}"><i class="fa-solid fa-hourglass-half"></i> Ubicaciones apartadas por <b class="reservaTiempo">${tiempoReserva()}</b></div>
         <div class="pasos">${pasos}</div>
         ${cuerpo}
         <div class="desglose">
@@ -1207,6 +1274,8 @@ async function pagar(){
 
     try{
 
+        if(!reservaExpira || reservaExpira < Date.now()) throw new Error("Tu reserva venció. Vuelve a intentarlo.");
+
         const compra = crearCompra(evento, carrito, metodo, null);
 
         if(factura.quiere){
@@ -1229,6 +1298,14 @@ async function pagar(){
 
         const guardada = await DB.comprar(compra);
 
+        detenerReserva();
+
+        // boletas (y factura, si la pidió) a su correo
+        DB.encolarCorreo(
+            [usuario.email, guardada.factura && guardada.factura.adquiriente.correo],
+            correoCompra(guardada, CONFIG.sitioWeb || "")
+        ).catch(() => {});
+
         compras.unshift(guardada);
 
         guardarCache();
@@ -1247,6 +1324,74 @@ async function pagar(){
 
         renderCheckout();
     }
+}
+
+/* ----- reserva temporal ----- */
+
+function tiempoReserva(){
+
+    const s = reservaExpira ? Math.max(0, Math.round((reservaExpira - Date.now()) / 1000)) : CONFIG.minutosReserva * 60;
+
+    return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+}
+
+function iniciarContadorReserva(){
+
+    clearInterval(intervaloReserva);
+
+    const tic = () => {
+
+        if(!reservaExpira) return;
+
+        const s = Math.max(0, Math.round((reservaExpira - Date.now()) / 1000));
+
+        document.querySelectorAll(".reservaTiempo").forEach(el => el.innerText = tiempoReserva());
+
+        document.querySelectorAll(".reservaApp, .reservaBarra").forEach(el => {
+
+            el.classList.add("show");
+
+            el.classList.toggle("urgente", s <= 60);
+        });
+
+        if(s <= 0){
+
+            detenerReserva();
+
+            if(sheetAbierto() && !pagando) cerrarSheet();
+
+            toast(`Tu reserva de ${CONFIG.minutosReserva} minutos venció. Toca Continuar para apartarlas de nuevo.`, "fa-hourglass-end");
+        }
+    };
+
+    tic();
+
+    intervaloReserva = setInterval(tic, 1000);
+}
+
+function detenerReserva(){
+
+    clearInterval(intervaloReserva);
+
+    reservaExpira = null;
+
+    document.querySelectorAll(".reservaApp, .reservaBarra").forEach(el => el.classList.remove("show"));
+}
+
+function actualizarReserva(){
+
+    if(!reservaExpira || !evento) return;
+
+    if(!carrito.length){
+
+        DB.liberar(evento.id);
+
+        detenerReserva();
+
+        return;
+    }
+
+    DB.reservar(evento.id, carrito, (reservaExpira - Date.now()) / 60000).catch(() => {});
 }
 
 function mostrarExito(compra){
@@ -1303,10 +1448,95 @@ function htmlAuth(mensaje = ""){
             <input id="authCorreo" type="email" placeholder="Correo electrónico" autocomplete="email">
             <input id="authClave" type="password" placeholder="Contraseña (mín. 6 caracteres)" autocomplete="${registro ? "new-password" : "current-password"}">
             <button class="btnPrimario ancho" id="authBtn" onclick="enviarAuth()">${registro ? "Crear cuenta" : "Iniciar sesión"}</button>
+            ${registro ? "" : `<button class="enlace pequeno" onclick="olvideClave()">¿Olvidaste tu contraseña?</button>`}
             <button class="enlace" onclick="modoAuth='${registro ? "login" : "registro"}'; abrirSheet(htmlAuth(${JSON.stringify(mensaje).replace(/"/g, "&quot;")}));">
                 ${registro ? "Ya tengo cuenta" : "¿No tienes cuenta? Regístrate"}
             </button>
         </div>`;
+}
+
+async function olvideClave(){
+
+    const correo = $("authCorreo").value.trim();
+
+    if(!correo){
+
+        toast("Escribe tu correo y vuelve a tocar \"¿Olvidaste tu contraseña?\"", "fa-envelope");
+
+        $("authCorreo").focus();
+
+        return;
+    }
+
+    try{
+
+        await DB.recuperarClave(correo);
+
+        toast(`Te enviamos un correo a ${esc(correo)} para crear una contraseña nueva`, "fa-envelope-circle-check");
+
+    }catch(e){
+
+        toast(esc(e.message), "fa-circle-xmark");
+    }
+}
+
+let despuesVerificar = null;
+
+function abrirVerificacion(luego){
+
+    despuesVerificar = luego || null;
+
+    abrirSheet(`
+        <div class="auth">
+            <div class="verificaIcono"><i class="fa-solid fa-envelope-open-text"></i></div>
+            <h2>Verifica tu correo</h2>
+            <p class="sheetSub">Te enviamos un enlace a <b>${esc(usuario.email)}</b>. Ábrelo para confirmar que es tuyo: ahí llegarán tus boletas y tu factura electrónica.</p>
+            <p class="sheetSub"><small>¿No lo ves? Revisa Spam o Promociones.</small></p>
+            <button class="btnPrimario ancho" onclick="yaVerifique()"><i class="fa-solid fa-circle-check"></i> Ya lo verifiqué</button>
+            <button class="enlace" onclick="reenviarVerificacion()">Reenviar correo</button>
+        </div>`);
+}
+
+async function yaVerifique(){
+
+    const u = await DB.refrescarUsuario();
+
+    if(u && u.verificado){
+
+        usuario = u;
+
+        recalcularEstado();
+
+        alCambiarUsuario();
+
+        toast("¡Correo verificado! Ya puedes comprar", "fa-circle-check");
+
+        const luego = despuesVerificar;
+
+        despuesVerificar = null;
+
+        if(luego) luego();
+
+        else cerrarSheet();
+
+    }else{
+
+        toast("Aún no aparece verificado. Abre el enlace del correo", "fa-envelope");
+    }
+}
+
+async function reenviarVerificacion(){
+
+    try{
+
+        await DB.reenviarVerificacion();
+
+        toast("Te reenviamos el correo de verificación", "fa-envelope-circle-check");
+
+    }catch(e){
+
+        toast(esc(e.message), "fa-circle-xmark");
+    }
 }
 
 async function enviarAuth(){
@@ -1326,6 +1556,22 @@ async function enviarAuth(){
         if(modoAuth === "registro"){
 
             await DB.registrar($("authNombre").value.trim(), correo, clave);
+
+            usuario = DB.usuario();
+
+            alCambiarUsuario();
+
+            modoAuth = "login";
+
+            // correo real: debe verificarlo antes de comprar
+            if(!usuario.verificado){
+
+                abrirVerificacion(despuesAuth);
+
+                despuesAuth = null;
+
+                return;
+            }
 
         }else{
 
@@ -1604,8 +1850,15 @@ function renderPerfil(){
             <div class="avatarGrande">${esc(usuario.name.split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase())}</div>
             <h2>${esc(usuario.name)}</h2>
             <p>${esc(usuario.email)}</p>
-            ${usuario.role === "admin" ? '<span class="tag">Administrador</span>' : ""}
+            ${usuario.role === "admin" ? '<span class="tag">Administrador</span>' : usuario.role === "taquilla" ? '<span class="tag">Taquilla</span>' : ""}
+            ${usuario.verificado ? "" : `<button class="chipVerificar" onclick="abrirVerificacion()"><i class="fa-solid fa-envelope"></i> Verifica tu correo</button>`}
         </div>
+        ${["admin", "taquilla"].includes(usuario.role) ? `
+        <button class="botonTaquilla" onclick="abrirEscaner()">
+            <i class="fa-solid fa-qrcode"></i>
+            <div><b>Modo taquilla</b><small>Escanea las boletas en la entrada del evento</small></div>
+            <i class="fa-solid fa-chevron-right"></i>
+        </button>` : ""}
         ${opcionesPerfil(oscuro)}
         <button class="opcion peligro" onclick="salir()"><i class="fa-solid fa-right-from-bracket"></i> Cerrar sesión</button>
     ` : `
@@ -1627,7 +1880,7 @@ function opcionesPerfil(oscuro){
             <a class="opcion" href="tel:+573205557788"><i class="fa-solid fa-phone"></i> +57 320 555 7788 · 24/7</a>
             <div class="opcion info"><i class="fa-solid fa-database"></i> ${DB.modo === "firebase" ? "Conectado a la nube (Firebase)" : "Modo local (sin Firebase)"}</div>
         </div>
-        <p class="version">OnTicket App v1.0 · Vive la mejor experiencia</p>`;
+        <p class="version">OnTicket App v1.1 · Vive la mejor experiencia</p>`;
 }
 
 async function salir(){
@@ -1668,6 +1921,8 @@ function alCambiarUsuario(){
 
     if($("tab-perfil").classList.contains("active")) renderPerfil();
 
+    recalcularEstado();
+
     if(usuario){
 
         compras = JSON.parse(localStorage.getItem(claveCache()) || "[]");
@@ -1699,6 +1954,9 @@ if(localStorage.getItem("temaApp") === "claro") document.body.classList.add("cla
 
 renderExplorar();
 
+// eventos creados por el administrador (Firebase)
+sincronizarEventos().then(cambio => { if(cambio) renderExplorar(); });
+
 DB.onUsuario(u => {
 
     usuario = u;
@@ -1707,3 +1965,173 @@ DB.onUsuario(u => {
 });
 
 setTimeout(() => $("splash").classList.add("fuera"), 900);
+
+
+
+/* ========================================
+   MODO TAQUILLA (escáner de entrada)
+   Solo para usuarios con rol "admin" o "taquilla".
+======================================== */
+
+let apagarCamaraApp = null;
+let validando = false;
+let ingresosTurno = 0;
+
+async function abrirEscaner(){
+
+    abrirPantalla("pantalla-escaner");
+
+    $("resultadoEscaner").className = "resultadoEscaner";
+
+    $("contadorTurno").innerText = ingresosTurno;
+
+    try{
+
+        apagarCamaraApp = await iniciarEscaner($("videoEscaner"), leerBoleta);
+
+        $("camaraAviso").classList.remove("show");
+
+    }catch(e){
+
+        $("camaraAviso").classList.add("show");
+    }
+}
+
+function apagarEscaner(){
+
+    if(apagarCamaraApp){
+
+        apagarCamaraApp();
+
+        apagarCamaraApp = null;
+    }
+}
+
+function codigoManualApp(){
+
+    const t = $("codigoEscaner").value.trim();
+
+    if(t) leerBoleta(t);
+}
+
+function avisoEntrada(ok){
+
+    if(navigator.vibrate) navigator.vibrate(ok ? 80 : [100, 60, 100]);
+
+    try{
+
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+        const o = ctx.createOscillator(), g = ctx.createGain();
+
+        o.frequency.value = ok ? 1046 : 220;
+
+        g.gain.setValueAtTime(0.2, ctx.currentTime);
+
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+
+        o.connect(g).connect(ctx.destination);
+
+        o.start();
+
+        o.stop(ctx.currentTime + 0.4);
+
+    }catch(e){}
+}
+
+async function leerBoleta(texto){
+
+    if(validando) return;
+
+    validando = true;
+
+    const panel = $("resultadoEscaner");
+
+    panel.className = "resultadoEscaner show cargando";
+
+    panel.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Validando...`;
+
+    let r;
+
+    try{
+
+        r = await validarEntrada(texto);
+
+    }catch(e){
+
+        r = { ok:false, motivo: e.message };
+    }
+
+    avisoEntrada(r.ok);
+
+    const c = r.compra;
+
+    const detalle = c ? `
+        <div class="resDatos">
+            <b>${esc(c.evento)}</b>
+            <small>${esc(c.usuario || c.email || "")}</small>
+            <small>${(c.items || []).map(i => esc(i.etiqueta)).join(" · ")}</small>
+        </div>` : "";
+
+    if(r.ok){
+
+        panel.className = "resultadoEscaner show valida";
+
+        panel.innerHTML = `
+            <div class="resFila"><span class="resIcono"><i class="fa-solid fa-check"></i></span>
+            <div><h3>Boleta válida</h3><p>Ingresaron ${r.usados} de ${r.total} · faltan ${r.restantes}</p></div></div>
+            ${r.manual ? `<p class="aviso">Validación manual: verifica el documento de identidad</p>` : ""}
+            ${detalle}
+            <div class="resAcciones">
+                <button class="btnPrimario" onclick="registrarEntradaApp('${esc(r.codigo)}', 1)"><i class="fa-solid fa-person"></i> Entra 1</button>
+                ${r.restantes > 1 ? `<button class="btnSecundario" onclick="registrarEntradaApp('${esc(r.codigo)}', ${r.restantes})">Entran ${r.restantes}</button>` : ""}
+            </div>`;
+
+    }else{
+
+        panel.className = "resultadoEscaner show rechazada";
+
+        panel.innerHTML = `
+            <div class="resFila"><span class="resIcono"><i class="fa-solid fa-xmark"></i></span>
+            <div><h3>No puede entrar</h3><p>${esc(r.motivo)}</p></div></div>
+            ${detalle}
+            <button class="btnSecundario ancho" onclick="siguienteBoleta()">Escanear otra</button>`;
+    }
+
+    validando = false;
+}
+
+async function registrarEntradaApp(codigo, n){
+
+    try{
+
+        const c = await DB.registrarIngreso(codigo, n);
+
+        ingresosTurno += n;
+
+        $("contadorTurno").innerText = ingresosTurno;
+
+        avisoEntrada(true);
+
+        const panel = $("resultadoEscaner");
+
+        panel.className = "resultadoEscaner show valida";
+
+        panel.innerHTML = `
+            <div class="resFila"><span class="resIcono"><i class="fa-solid fa-door-open"></i></span>
+            <div><h3>¡Bienvenidos!</h3><p>Ingreso registrado: ${c.ingresos} de ${personasCompra(c)}</p></div></div>`;
+
+        setTimeout(siguienteBoleta, 1800);
+
+    }catch(e){
+
+        toast(esc(e.message), "fa-triangle-exclamation");
+    }
+}
+
+function siguienteBoleta(){
+
+    $("resultadoEscaner").className = "resultadoEscaner";
+
+    $("codigoEscaner").value = "";
+}

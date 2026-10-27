@@ -27,6 +27,7 @@ mkdirSync(join(www, "lib"), { recursive: true });
 
 const librerias = {
     "qrcode-generator/dist/qrcode.js": "qrcode.js",
+    "jsqr/dist/jsQR.js": "jsQR.js",
     "firebase/firebase-app-compat.js": "firebase-app-compat.js",
     "firebase/firebase-auth-compat.js": "firebase-auth-compat.js",
     "firebase/firebase-firestore-compat.js": "firebase-firestore-compat.js"

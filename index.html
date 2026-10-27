@@ -9,6 +9,25 @@
 
     <title>OnTicket · Vive la mejor experiencia</title>
 
+    <meta name="description" content="Compra boletas para conciertos, humor y eventos en vivo. Vive la mejor experiencia.">
+
+    <!-- Instalable como app (PWA): Android y iPhone -->
+    <link rel="manifest" href="manifest.webmanifest">
+
+    <meta name="theme-color" content="#ff6600">
+
+    <link rel="icon" type="image/png" href="img/icon-192.png">
+
+    <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <meta name="apple-mobile-web-app-title" content="OnTicket">
+
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
 
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,9 +42,9 @@
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
     >
 
-    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="stylesheet" href="style.css?v=5">
 
-    <link rel="stylesheet" href="planos.css?v=3">
+    <link rel="stylesheet" href="planos.css?v=5">
 
 </head>
 
@@ -146,6 +165,18 @@
     </div>
 
 </header>
+
+
+
+<div class="bannerVerificar" id="bannerVerificar">
+
+    <i class="fa-solid fa-envelope-circle-check"></i>
+
+    Verifica tu correo para poder comprar.
+
+    <button onclick="abrirVerificacion()">Ya lo verifiqué / reenviar</button>
+
+</div>
 
 
 
@@ -284,6 +315,11 @@
                 </div>
 
             </div>
+
+            <p class="appNota">
+                <i class="fa-brands fa-apple"></i>
+                ¿Tienes iPhone? Abre esta página en <b>Safari</b> → botón <b>Compartir</b> → <b>"Agregar a pantalla de inicio"</b> y OnTicket queda como una app más.
+            </p>
 
             <p class="appNota">
                 <i class="fa-solid fa-circle-info"></i>
@@ -498,51 +534,263 @@
 
     <div class="adminContainer">
 
-        <h1>Panel Administrativo</h1>
+        <div class="adminHead">
 
-        <p class="adminSubtitle">Últimas compras realizadas</p>
+            <div>
 
-        <div class="adminStats" id="adminStats"></div>
+                <span class="sectionKicker">OnTicket</span>
 
-        <div class="adminSearch">
+                <h1>Panel Administrativo</h1>
 
-            <input
-                type="text"
-                id="searchCompra"
-                placeholder="Buscar por código, usuario o evento..."
-                oninput="buscarCompraAdmin()"
-            >
+            </div>
+
+            <div class="adminTabs" id="adminTabs">
+
+                <button data-tab="ventas" onclick="adminTab('ventas')"><i class="fa-solid fa-receipt"></i> Ventas</button>
+
+                <button data-tab="estadisticas" onclick="adminTab('estadisticas')"><i class="fa-solid fa-chart-column"></i> Estadísticas</button>
+
+                <button data-tab="eventos" onclick="adminTab('eventos')"><i class="fa-solid fa-calendar-plus"></i> Eventos</button>
+
+                <button data-tab="taquilla" onclick="adminTab('taquilla')"><i class="fa-solid fa-qrcode"></i> Taquilla</button>
+
+            </div>
 
         </div>
 
-        <div class="tableScroll">
 
-            <table class="adminTable">
+        <!-- ===== VENTAS ===== -->
 
-                <thead>
+        <div class="adminPanel" id="admin-ventas">
 
-                    <tr>
-                        <th>Usuario</th>
-                        <th>Evento</th>
-                        <th>Boletas</th>
-                        <th>Servicio + IVA</th>
-                        <th>Total</th>
-                        <th>Método</th>
-                        <th>Factura</th>
-                        <th>Código</th>
-                    </tr>
+            <div class="adminStats" id="adminStats"></div>
 
-                </thead>
+            <div class="adminSearch">
 
-                <tbody id="adminTableBody"></tbody>
+                <input type="text" id="searchCompra" placeholder="Buscar por código, usuario o evento..." oninput="buscarCompraAdmin()">
 
-            </table>
+            </div>
+
+            <div class="tableScroll">
+
+                <table class="adminTable">
+
+                    <thead>
+
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Evento</th>
+                            <th>Boletas</th>
+                            <th>Servicio + IVA</th>
+                            <th>Total</th>
+                            <th>Ingresos</th>
+                            <th>Factura</th>
+                            <th>Código</th>
+                        </tr>
+
+                    </thead>
+
+                    <tbody id="adminTableBody"></tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+
+        <!-- ===== ESTADÍSTICAS ===== -->
+
+        <div class="adminPanel viz" id="admin-estadisticas">
+
+            <div class="statsFiltros">
+
+                <label>
+                    Evento
+                    <select id="statsEvento" onchange="cargarEstadisticas()"></select>
+                </label>
+
+                <div class="segmento" id="statsModo">
+
+                    <button data-modo="ocupacion" class="active" onclick="cambiarModoCalor('ocupacion')">
+                        <i class="fa-solid fa-fire"></i> Ocupación
+                    </button>
+
+                    <button data-modo="flujo" onclick="cambiarModoCalor('flujo')">
+                        <i class="fa-solid fa-person-walking-arrow-right"></i> Flujo de ingreso
+                    </button>
+
+                </div>
+
+            </div>
+
+            <div class="kpis" id="statsKpis"></div>
+
+            <div class="statsGrid">
+
+                <div class="vizCard calorCard">
+
+                    <div class="vizHead">
+
+                        <div>
+                            <h3 id="calorTitulo">Mapa de calor de ocupación</h3>
+                            <p id="calorSub">Dónde se concentra el público según las ubicaciones vendidas</p>
+                        </div>
+
+                        <div class="pisoTabs" id="calorPisos"></div>
+
+                    </div>
+
+                    <div class="flujoControl" id="flujoControl">
+
+                        <button class="playBtn" id="flujoPlay" onclick="animarFlujo()" aria-label="Reproducir">
+                            <i class="fa-solid fa-play"></i>
+                        </button>
+
+                        <input type="range" id="flujoHora" min="0" max="100" value="100" oninput="moverFlujo()">
+
+                        <span id="flujoTxt"></span>
+
+                    </div>
+
+                    <div class="calorWrap">
+
+                        <svg id="calorSvg" class="planoSvg modoCalor" xmlns="http://www.w3.org/2000/svg"></svg>
+
+                        <div class="planoTooltip" id="calorTooltip"></div>
+
+                    </div>
+
+                    <div class="calorLeyenda">
+
+                        <span>Poca gente</span>
+
+                        <i class="calorEscala"></i>
+
+                        <span>Aglomeración</span>
+
+                    </div>
+
+                    <p class="vizNota" id="calorNota"></p>
+
+                </div>
+
+                <div class="vizCard">
+
+                    <div class="vizHead">
+                        <div>
+                            <h3>Ocupación por localidad</h3>
+                            <p>Porcentaje del aforo vendido en cada zona</p>
+                        </div>
+                    </div>
+
+                    <div id="chartLocalidades" class="chartBarras"></div>
+
+                </div>
+
+                <div class="vizCard">
+
+                    <div class="vizHead">
+                        <div>
+                            <h3>Ventas registradas por día</h3>
+                            <p>Total pagado en los últimos 14 días (todas las compras reales)</p>
+                        </div>
+                    </div>
+
+                    <div id="chartDias" class="chartLinea"></div>
+
+                </div>
+
+                <div class="vizCard">
+
+                    <div class="vizHead">
+                        <div>
+                            <h3>Ventas registradas por evento</h3>
+                            <p>Total pagado por compras reales, incluye servicio e IVA</p>
+                        </div>
+                    </div>
+
+                    <div id="chartEventos" class="chartBarras"></div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ===== EVENTOS ===== -->
+
+        <div class="adminPanel" id="admin-eventos">
+
+            <div class="eventosAdminHead">
+
+                <p class="adminSubtitle" id="eventosAdminInfo"></p>
+
+                <button class="primaryBtn big" onclick="editarEvento()">
+                    <i class="fa-solid fa-plus"></i> Nuevo evento
+                </button>
+
+            </div>
+
+            <div class="eventosAdmin" id="eventosAdmin"></div>
+
+        </div>
+
+
+        <!-- ===== TAQUILLA ===== -->
+
+        <div class="adminPanel" id="admin-taquilla">
+
+            <div class="taquillaGrid">
+
+                <div class="taquillaCam">
+
+                    <div class="camara" id="camaraWeb">
+
+                        <video id="videoTaquilla" playsinline muted></video>
+
+                        <div class="marcoQR"></div>
+
+                        <div class="camaraOff" id="camaraOff">
+                            <i class="fa-solid fa-camera"></i>
+                            <p>Escanea el QR de la boleta con la cámara</p>
+                            <button class="primaryBtn" onclick="encenderCamara()"><i class="fa-solid fa-video"></i> Encender cámara</button>
+                        </div>
+
+                    </div>
+
+                    <div class="manual">
+
+                        <input type="text" id="codigoManual" placeholder="O escribe el código: ONTICKET-123456-..." onkeydown="if(event.key==='Enter') validarManual()">
+
+                        <button class="ghostBtn" onclick="validarManual()">Validar</button>
+
+                    </div>
+
+                </div>
+
+                <div>
+
+                    <div class="resultadoTaquilla" id="resultadoTaquilla">
+                        <i class="fa-solid fa-qrcode"></i>
+                        <p>Aquí verás si la boleta es válida</p>
+                    </div>
+
+                    <h3 class="historialTitulo">Ingresos de esta sesión <span id="contadorIngresos">0</span></h3>
+
+                    <div class="historial" id="historialTaquilla"></div>
+
+                </div>
+
+            </div>
 
         </div>
 
     </div>
 
 </section>
+
 
 
 
@@ -573,6 +821,10 @@
     </div>
 
     <div class="cartBarRight">
+
+        <div class="reservaTimer" title="Tus ubicaciones están apartadas">
+            <i class="fa-solid fa-hourglass-half"></i> <span class="reservaTiempo">10:00</span>
+        </div>
 
         <div class="cartTotal" id="cartTotal">$0</div>
 
@@ -635,11 +887,157 @@
 
         <button class="primaryBtn" id="loginActionBtn" onclick="iniciarSesion()">INICIAR SESIÓN</button>
 
+        <button class="linkBtn olvide" onclick="olvideClave()">¿Olvidaste tu contraseña?</button>
+
+        <div class="separador"><span>o</span></div>
+
+        <button class="googleBtn" onclick="loginConGoogle()">
+            <svg viewBox="0 0 48 48" width="20" height="20" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
+            Continuar con Google
+        </button>
+
         <button class="switchAuthBtn" onclick="toggleAuthMode()">Crear cuenta</button>
 
     </div>
 
 </div>
+
+
+
+<!-- ========================================
+     VERIFICAR CORREO
+======================================== -->
+
+<div class="modal" id="verificaModal">
+
+    <div class="modalBox small centrado">
+
+        <span class="closeModal" onclick="cerrarModal('verificaModal')">✖</span>
+
+        <div class="verificaIcono"><i class="fa-solid fa-envelope-open-text"></i></div>
+
+        <h2>Verifica tu correo</h2>
+
+        <p class="modalSub">
+            Te enviamos un enlace a <b id="verificaCorreo"></b>.
+            Ábrelo para confirmar que el correo es tuyo: ahí llegarán tus boletas y tu factura electrónica.
+        </p>
+
+        <p class="modalSub"><small>¿No lo ves? Revisa la carpeta de Spam o Promociones.</small></p>
+
+        <button class="primaryBtn" onclick="yaVerifique()">
+            <i class="fa-solid fa-circle-check"></i> Ya lo verifiqué
+        </button>
+
+        <button class="switchAuthBtn" onclick="reenviarVerificacion()">Reenviar correo</button>
+
+    </div>
+
+</div>
+
+
+
+<!-- ========================================
+     EDITOR DE EVENTOS (ADMIN)
+======================================== -->
+
+<div class="modal" id="eventoModal">
+
+    <div class="modalBox large">
+
+        <span class="closeModal" onclick="cerrarModal('eventoModal')">✖</span>
+
+        <h2 id="eventoModalTitulo">Nuevo evento</h2>
+
+        <div class="editorEvento">
+
+            <div class="editorImagen">
+
+                <div class="previewAfiche" id="previewAfiche">
+                    <i class="fa-regular fa-image"></i>
+                    <span>Sin afiche</span>
+                </div>
+
+                <label class="ghostBtn full subirAfiche">
+                    <i class="fa-solid fa-upload"></i> Subir afiche
+                    <input type="file" accept="image/*" id="evImagenArchivo" onchange="cargarAfiche(this)" hidden>
+                </label>
+
+                <small class="ayuda">JPG o PNG. Se optimiza automáticamente.</small>
+
+            </div>
+
+            <div class="formGrid">
+
+                <label>Artista / nombre
+                    <input id="evArtista" placeholder="Ej: Silvestre Dangond">
+                </label>
+
+                <label>Título / gira
+                    <input id="evTitulo" placeholder="Ej: Tour 2027">
+                </label>
+
+                <label>Categoría
+                    <select id="evCategoria">
+                        <option>Conciertos</option>
+                        <option>Festivales</option>
+                        <option>Humor</option>
+                        <option>Deportes</option>
+                    </select>
+                </label>
+
+                <label>Lugar
+                    <select id="evLugar" onchange="renderPreciosEditor()"></select>
+                </label>
+
+                <label>Fecha
+                    <input type="date" id="evFecha">
+                </label>
+
+                <label>Hora
+                    <input type="time" id="evHora" value="20:00">
+                </label>
+
+                <label class="full">Descripción
+                    <textarea id="evDescripcion" rows="3" placeholder="Cuéntale al público por qué no se lo puede perder"></textarea>
+                </label>
+
+                <label class="full">Video (opcional, URL de un .mp4)
+                    <input id="evVideo" placeholder="https://...">
+                </label>
+
+                <label class="check">
+                    <input type="checkbox" id="evDestacado"> Mostrar en el banner de destacados
+                </label>
+
+                <label class="check">
+                    <input type="checkbox" id="evVisible" checked> Visible para el público
+                </label>
+
+            </div>
+
+        </div>
+
+        <h3 class="preciosTitulo">Precios por localidad</h3>
+
+        <p class="modalSub">Valor de la boleta antes de servicio e IVA. En palcos: valor del palco completo (10 personas) y del puesto individual.</p>
+
+        <div class="preciosEditor" id="preciosEditor"></div>
+
+        <div class="checkoutFooter">
+
+            <button class="ghostBtn" onclick="cerrarModal('eventoModal')">Cancelar</button>
+
+            <button class="primaryBtn" id="btnGuardarEvento" onclick="guardarEventoEditor()">
+                <i class="fa-solid fa-floppy-disk"></i> Guardar evento
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
 
 
 
@@ -718,6 +1116,11 @@
     <div class="modalBox large checkoutBox">
 
         <span class="closeModal" onclick="cerrarModal('checkoutModal')">✖</span>
+
+        <div class="reservaTimer enCheckout">
+            <i class="fa-solid fa-hourglass-half"></i>
+            Tus ubicaciones están apartadas por <b class="reservaTiempo">10:00</b>
+        </div>
 
         <div class="stepper" id="stepper">
 
@@ -990,12 +1393,16 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
-<script src="firebase-config.js?v=3"></script>
-<script src="data.js?v=3"></script>
-<script src="planos.js?v=3"></script>
-<script src="core.js?v=3"></script>
-<script src="db.js?v=3"></script>
-<script src="script.js?v=3"></script>
+<!-- Lector de QR para la taquilla -->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+
+<script src="firebase-config.js?v=5"></script>
+<script src="data.js?v=5"></script>
+<script src="planos.js?v=5"></script>
+<script src="core.js?v=5"></script>
+<script src="db.js?v=5"></script>
+<script src="script.js?v=5"></script>
+<script src="admin.js?v=5"></script>
 
 </body>
 </html>

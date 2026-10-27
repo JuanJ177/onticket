@@ -87,3 +87,46 @@ npm run android
   (código + ventana de tiempo + firma) y su código de compra. Se guardan en el celular para
   mostrarlas **sin internet** en la entrada.
 - **Perfil:** misma cuenta que la web, tema claro/oscuro, soporte.
+- **Modo taquilla** (rol `admin` o `taquilla`): escanea el QR con la cámara, valida la firma y la
+  hora del QR, y registra cuántas personas de la boleta ya entraron.
+
+---
+
+## 4. Panel administrativo (web → botón "Admin")
+
+| Pestaña | Qué hace |
+|---|---|
+| **Ventas** | Todas las compras, servicio + IVA, facturas e ingresos por boleta |
+| **Estadísticas** | Aforo, ocupación, recaudo, gráficas y **mapa de calor** del plano (ocupación o flujo de ingreso por hora) |
+| **Eventos** | Crear, editar, ocultar o borrar eventos (afiche, fecha, lugar, precios por localidad) |
+| **Taquilla** | Validar boletas con la cámara del computador o escribiendo el código |
+
+**Roles** (Firestore → colección `usuarios` → campo `role`):
+
+- `user`: cliente (por defecto)
+- `taquilla`: personal de la entrada; solo ve la pestaña Taquilla
+- `admin`: todo
+
+---
+
+## 5. Configuración en Firebase (cada vez que se actualicen las reglas)
+
+1. **Reglas:** Firestore Database → Reglas → pegar `firestore.rules` → Publicar.
+2. **Inicio con Google:** Authentication → Método de acceso → Agregar proveedor → Google → Habilitar.
+3. **Dominio de la web:** Authentication → Configuración → Dominios autorizados → agregar el dominio de Vercel.
+4. **Correos en español:** Authentication → Plantillas → idioma de las plantillas: Español.
+
+---
+
+## 6. Detalles técnicos
+
+- **Fechas:** cada evento tiene `fechaISO`. Si `CONFIG.moverEventosPasados` está activo, los
+  eventos cuya fecha ya pasó se muestran automáticamente en el año siguiente (eventos de demostración).
+- **Reserva:** al pasar a pagar, las ubicaciones quedan apartadas `CONFIG.minutosReserva` minutos
+  (colección `reservas`). Las demás personas las ven como "en proceso de compra".
+- **Correo verificado:** para comprar se exige correo verificado (las reglas lo validan).
+- **Correos de compra:** cada compra deja un mensaje en la colección `correos`. La extensión
+  *Trigger Email* de Firebase (plan Blaze) los envía automáticamente.
+- **Ocupación de demostración:** el plano simula ventas por localidad con un azar estable para
+  que se vea real; las compras reales se suman encima. Las estadísticas lo indican.
+- **Pruebas sin Firebase:** abrir la web con `?modo=local` usa el almacenamiento del navegador.
