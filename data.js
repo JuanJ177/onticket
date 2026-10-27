@@ -19,7 +19,7 @@ const CONFIG = {
     minutosReserva: 10,
 
     // Dirección pública de la web (para los enlaces e imágenes de los correos que envía la app)
-    sitioWeb: "",
+    sitioWeb: "https://onticket-five.vercel.app/",
 
     // Eventos de demostración: si la fecha ya pasó, se corre al año siguiente
     // (así los eventos de ejemplo siguen vigentes sin tener que cambiarlos)
