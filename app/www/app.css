@@ -2841,3 +2841,40 @@ body.claro .perfilTarjeta{
     font-weight:600;
     margin-top:8px;
 }
+
+
+
+/* ========================================
+   AVISO DE ACTUALIZACIÓN
+======================================== */
+
+.novedades{
+
+    list-style:none;
+    text-align:left;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    background:var(--surface2);
+    border-radius:16px;
+    padding:14px;
+    font-size:14px;
+}
+
+.novedades li{
+
+    display:flex;
+    gap:10px;
+    align-items:flex-start;
+}
+
+.novedades i{
+
+    color:var(--ind);
+    margin-top:3px;
+}
+
+.actualizacion .nota{
+
+    text-align:left;
+}

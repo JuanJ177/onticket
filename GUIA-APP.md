@@ -66,6 +66,17 @@ que es el archivo que descarga el botón **"Descargar para Android"** de la web
 (sube los cambios a GitHub para que Vercel publique la versión nueva).
 Pásalo al celular e instálalo (hay que permitir "instalar apps de origen desconocido").
 
+### Publicar una versión nueva de la app (las instaladas avisan solas)
+
+1. En `app/version.json` sube el `codigo` en 1 (ej. 2 → 3), cambia el `nombre` (ej. "1.3.0")
+   y escribe en `notas` lo nuevo (es lo que verá la gente en el aviso).
+2. Ejecuta `npm run apk` dentro de `app/`.
+3. Sube los cambios a GitHub (`git push`). Vercel publica `version-app.json` y el APK nuevo.
+4. Las apps instaladas muestran **"¡Nueva versión!"** al abrirse, con el botón **Actualizar**.
+   Se instala encima: se conservan la sesión y las boletas.
+
+> El `codigo` siempre debe ser mayor que el anterior; Android no instala una versión con código menor.
+
 Para abrir el proyecto en Android Studio:
 
 ```bash

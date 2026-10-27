@@ -1880,7 +1880,8 @@ function opcionesPerfil(oscuro){
             <a class="opcion" href="tel:+573205557788"><i class="fa-solid fa-phone"></i> +57 320 555 7788 · 24/7</a>
             <div class="opcion info"><i class="fa-solid fa-database"></i> ${DB.modo === "firebase" ? "Conectado a la nube (Firebase)" : "Modo local (sin Firebase)"}</div>
         </div>
-        <p class="version">OnTicket App v1.1 · Vive la mejor experiencia</p>`;
+        <button class="opcion" onclick="buscarActualizacion(true)"><i class="fa-solid fa-rotate"></i> Buscar actualizaciones</button>
+        <p class="version">OnTicket App v${esc(VERSION_LOCAL.nombre)} · Vive la mejor experiencia</p>`;
 }
 
 async function salir(){
@@ -2135,3 +2136,98 @@ function siguienteBoleta(){
 
     $("codigoEscaner").value = "";
 }
+
+
+
+/* ========================================
+   ACTUALIZACIONES DE LA APP
+   La web publica version-app.json con la última versión.
+   Si la instalada es más vieja, se ofrece descargar la nueva
+   (se instala encima: se conservan sesión y boletas).
+======================================== */
+
+const VERSION_LOCAL = typeof APP_VERSION !== "undefined" ? APP_VERSION : { codigo: 0, nombre: "?" };
+
+let ultimaRevision = 0;
+
+async function buscarActualizacion(manual){
+
+    if(!CONFIG.sitioWeb) return;
+
+    ultimaRevision = Date.now();
+
+    try{
+
+        const r = await fetch(`${CONFIG.sitioWeb}version-app.json?t=${Date.now()}`, { cache: "no-store" });
+
+        const remota = await r.json();
+
+        if(remota.codigo > VERSION_LOCAL.codigo){
+
+            // si dijo "Más tarde", no se insiste hasta que vuelva a abrir la app
+            if(!manual && sessionStorage.getItem("actualizacionPospuesta") === String(remota.codigo)) return;
+
+            // no interrumpe una compra o una boleta abierta
+            if(!manual && capas.length) return;
+
+            mostrarActualizacion(remota);
+
+        }else if(manual){
+
+            toast(`Tienes la última versión (${esc(VERSION_LOCAL.nombre)})`, "fa-circle-check");
+        }
+
+    }catch(e){
+
+        if(manual) toast("No se pudo revisar. Revisa tu conexión", "fa-wifi");
+    }
+}
+
+function mostrarActualizacion(v){
+
+    const url = new URL(v.apk || "descargas/OnTicket.apk", CONFIG.sitioWeb).href;
+
+    abrirSheet(`
+        <div class="auth actualizacion">
+            <div class="verificaIcono"><i class="fa-solid fa-rocket"></i></div>
+            <h2>¡Nueva versión ${esc(v.nombre)}!</h2>
+            <p class="sheetSub">Tienes la ${esc(VERSION_LOCAL.nombre)}. Esto es lo nuevo:</p>
+            <ul class="novedades">
+                ${(v.notas || []).map(n => `<li><i class="fa-solid fa-check"></i> ${esc(n)}</li>`).join("")}
+            </ul>
+            <button class="btnPrimario ancho" onclick="descargarActualizacion('${esc(url)}')">
+                <i class="fa-solid fa-download"></i> Actualizar ahora
+            </button>
+            <button class="enlace" onclick="sessionStorage.setItem('actualizacionPospuesta', '${Number(v.codigo)}'); atras();">Más tarde</button>
+            <p class="nota">
+                <i class="fa-solid fa-circle-info"></i>
+                Se descarga el instalador: ábrelo y toca <b>Actualizar</b>. Conservas tu sesión y tus boletas.
+            </p>
+        </div>`);
+}
+
+async function descargarActualizacion(url){
+
+    const plugins = window.Capacitor && window.Capacitor.Plugins;
+
+    if(plugins && plugins.Browser){
+
+        // abre el navegador del celular, que descarga el APK
+        await plugins.Browser.open({ url });
+
+    }else{
+
+        window.open(url, "_blank");
+    }
+}
+
+// al abrir la app y cada vez que vuelve a primer plano (máximo una vez por hora)
+setTimeout(() => buscarActualizacion(false), 3000);
+
+document.addEventListener("visibilitychange", () => {
+
+    if(document.visibilityState === "visible" && Date.now() - ultimaRevision > 3600000){
+
+        buscarActualizacion(false);
+    }
+});

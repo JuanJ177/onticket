@@ -2,7 +2,7 @@
 // (eventos, planos, lógica, datos, imágenes) y las librerías.
 // Se ejecuta con: npm run copiar
 
-import { cpSync, mkdirSync } from "node:fs";
+import { cpSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -43,4 +43,11 @@ cpSync(join(fa, "css", "all.min.css"), join(www, "lib", "fontawesome", "css", "a
 
 cpSync(join(fa, "webfonts"), join(www, "lib", "fontawesome", "webfonts"), { recursive: true });
 
-console.log("✔ Archivos compartidos copiados a www/");
+// versión de la app (sale de app/version.json)
+const version = JSON.parse(readFileSync(join(app, "version.json"), "utf8"));
+
+writeFileSync(join(www, "version.js"), `// generado por scripts/copiar.mjs desde app/version.json
+const APP_VERSION = ${JSON.stringify(version)};
+`);
+
+console.log(`✔ Archivos compartidos copiados a www/ (versión ${version.nombre})`);

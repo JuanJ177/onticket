@@ -10,3 +10,4 @@ www/db.js
 www/img/
 www/lib/
 *.apk
+www/version.js

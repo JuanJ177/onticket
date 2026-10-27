@@ -1,0 +1,13 @@
+{
+  "codigo": 2,
+  "nombre": "1.2.0",
+  "notas": [
+    "Modo taquilla: escanea las boletas en la entrada con la cámara",
+    "Tus ubicaciones quedan apartadas 10 minutos mientras pagas",
+    "Fechas reales y cuenta regresiva de cada evento",
+    "Recuperar contraseña y verificación de correo",
+    "Aviso automático cuando haya una versión nueva"
+  ],
+  "apk": "descargas/OnTicket.apk",
+  "publicada": "2026-10-27T20:52:39.657Z"
+}

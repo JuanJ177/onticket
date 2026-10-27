@@ -1,5 +1,7 @@
 apply plugin: 'com.android.application'
 
+def versionApp = new groovy.json.JsonSlurper().parse(file("../../version.json"))
+
 android {
     namespace "com.onticket.app"
     compileSdk rootProject.ext.compileSdkVersion
@@ -7,8 +9,9 @@ android {
         applicationId "com.onticket.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // la version se toma de app/version.json (un solo lugar para cambiarla)
+        versionCode versionApp.codigo
+        versionName versionApp.nombre
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
