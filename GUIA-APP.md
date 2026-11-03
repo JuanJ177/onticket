@@ -1,5 +1,7 @@
 # OnTicket · Web + App móvil
 
+Web: **https://onticket.co** (también responde onticket-five.vercel.app)
+
 ## Estructura
 
 ```
@@ -136,8 +138,8 @@ npm run android
 - **Reserva:** al pasar a pagar, las ubicaciones quedan apartadas `CONFIG.minutosReserva` minutos
   (colección `reservas`). Las demás personas las ven como "en proceso de compra".
 - **Correo verificado:** para comprar se exige correo verificado (las reglas lo validan).
-- **Correos de compra:** cada compra deja un mensaje en la colección `correos`. La extensión
-  *Trigger Email* de Firebase (plan Blaze) los envía automáticamente.
+- **Correos de compra:** cada compra deja un mensaje en la colección `correos` y la función
+  `enviarCorreo` lo envía desde onticket.co@gmail.com (ver sección 7).
 - **Ocupación de demostración:** el plano simula ventas por localidad con un azar estable para
   que se vea real; las compras reales se suman encima. Las estadísticas lo indican.
 - **Pruebas sin Firebase:** abrir la web con `?modo=local` usa el almacenamiento del navegador.
