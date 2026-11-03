@@ -443,6 +443,8 @@ function abrirEvento(id){
 
             <p class="descripcion">${ev.descripcion}</p>
 
+            ${htmlAvisoOficial(ev)}
+
             <h2 class="seccionTitulo">¿Dónde es?</h2>
 
             <div class="tarjeta">

@@ -117,3 +117,47 @@
 .modoCalor .palco.ind rect,
 .modoCalor .palco.sel rect{ fill:#262830; stroke:#33353f; filter:none; }
 .modoCalor .palco.ind text{ fill:#5f626e; }
+
+
+
+
+/* ========================================
+   AVISO DE EVENTO REAL (DEMOSTRACIÓN)
+======================================== */
+
+.avisoOficial{
+
+    display:flex;
+    gap:12px;
+    align-items:flex-start;
+    margin:14px 0;
+    padding:12px 14px;
+    border-radius:14px;
+    background:rgba(255,180,0,0.14);
+    border:1px solid rgba(255,180,0,0.45);
+    font-size:14px;
+    line-height:1.45;
+    text-align:left;
+}
+
+.avisoOficial > i{
+
+    color:#f5b400;
+    font-size:18px;
+    margin-top:2px;
+}
+
+.avisoOficial a{
+
+    color:#ff8a00;
+    font-weight:700;
+    text-decoration:underline;
+}
+
+.avisoOficial small{
+
+    display:block;
+    margin-top:4px;
+    opacity:0.7;
+    font-size:12px;
+}

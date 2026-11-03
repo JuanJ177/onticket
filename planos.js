@@ -304,20 +304,20 @@ function construirCapachos(){
    Se usa para el Teatro Santiago Londoño (Pereira)
 ======================================== */
 
-function construirTeatro(){
+function construirTeatro(id = "teatro", nombre = "Teatro", zonas, filasPorZona){
 
-    const zonas = {
+    zonas = zonas || {
         vip:       { nombre:"Platea VIP",          color:"#d63ee8", texto:"#fff", precio:260000, tipo:"asiento" },
         pref:      { nombre:"Platea Preferencial", color:"#1e9be9", texto:"#fff", precio:180000, tipo:"asiento" },
         general:   { nombre:"Platea General",      color:"#f5b400", texto:"#3a2a00", precio:120000, tipo:"asiento" },
         balcon:    { nombre:"Balcón",              color:"#8bc34a", texto:"#1b3300", precio:80000,  tipo:"asiento" }
     };
 
-    const filasPorZona = [["vip", 3], ["pref", 5], ["general", 6], ["balcon", 4]];
+    filasPorZona = filasPorZona || [["vip", 3], ["pref", 5], ["general", 6], ["balcon", 4]];
 
     const W = 840, CX = W / 2, CY = -20, P = 24;
 
-    const piso = { id:"p1", nombre:"Teatro", w:W, h:0, formas:[], asientos:[], palcos:[], generales:[] };
+    const piso = { id:"p1", nombre, w:W, h:0, formas:[], asientos:[], palcos:[], generales:[] };
 
     piso.formas.push({ t:"rect", x:CX - 160, y:12, w:320, h:56, rx:28, cls:"escenario", texto:"ESCENARIO" });
 
@@ -384,8 +384,8 @@ function construirTeatro(){
     piso.h = maxY + 40;
 
     return {
-        id: "teatro",
-        nombre: "Teatro",
+        id,
+        nombre,
         zonas,
         pisos: [piso]
     };
@@ -396,5 +396,11 @@ function construirTeatro(){
 const PLANOS = {
     malocas: construirMalocas(),
     capachos: construirCapachos(),
-    teatro: construirTeatro()
+    teatro: construirTeatro(),
+    // auditorio (ej. Bethlemitas, Bogotá): VIP adelante, luego Platea y Luneta
+    auditorio: construirTeatro("auditorio", "Auditorio", {
+        vip:    { nombre:"VIP",    color:"#d63ee8", texto:"#fff",    precio:110000, tipo:"asiento" },
+        platea: { nombre:"Platea", color:"#1e9be9", texto:"#fff",    precio:100000, tipo:"asiento" },
+        luneta: { nombre:"Luneta", color:"#f5b400", texto:"#3a2a00", precio:90000,  tipo:"asiento" }
+    }, [["vip", 4], ["platea", 4], ["luneta", 7]])
 };

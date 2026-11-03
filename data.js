@@ -68,6 +68,15 @@ const LUGARES = {
         departamento: "Meta",
         mapa: "Coliseo Parque Sikuani, Villavicencio, Meta",
         plano: "malocas"   // coliseo con la misma distribución tipo Malocas
+    },
+
+    bethlemitas: {
+        nombre: "Auditorio Bethlemitas",
+        direccion: "Cra. 5 #65-42, Chapinero",
+        ciudad: "Bogotá",
+        departamento: "Cundinamarca",
+        mapa: "Auditorio Bethlemitas, Carrera 5 65-42, Bogotá",
+        plano: "auditorio"
     }
 };
 
@@ -146,12 +155,19 @@ const EVENTOS = [
     {
         id: "hassam",
         artista: "Hassam",
-        titulo: "Noche de Humor",
+        titulo: "SUR-ViVOR · Stand Up",
         categoria: "Humor",
-        lugar: "capachos",
-        fechaISO: "2026-12-11T20:00",
+        lugar: "bethlemitas",
+        fechaISO: "2026-12-05T20:00",
         imagen: "img/hassam.jpg",
-        descripcion: "El humorista colombiano Hassam llega a Villavicencio con una noche para reír sin parar. Palcos para ir con tu parche o puestos individuales. Apertura de puertas 7:00 PM.",
-        destacado: true
+        descripcion: "Después de 23 años con sus personajes, Hassam se sube al escenario sin caracterizaciones ni máscaras: un show de stand up más auténtico, mordaz y sarcástico para sobrevivir a estos tiempos. Sin personajes y sin filtro. Solo mayores de 18 años.",
+        destacado: true,
+        // evento real: precios de la boletería oficial (sin servicio)
+        precios: { vip: 110000, platea: 100000, luneta: 90000 },
+        oficial: {
+            boletera: "Boletaenlinea",
+            url: "https://boletaenlinea.co/los-eventos/hassam-sur-vivor-bogota-2026-3/",
+            creditoFoto: "Foto: Olgamariacasas (Wikimedia Commons, CC BY-SA 4.0)"
+        }
     }
 ];

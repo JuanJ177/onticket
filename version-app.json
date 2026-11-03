@@ -1,10 +1,10 @@
 {
-  "codigo": 6,
-  "nombre": "1.5.1",
+  "codigo": 7,
+  "nombre": "1.5.2",
   "notas": [
-    "Nuevo evento: Hassam · Noche de Humor en Los Capachos",
-    "Mejoras internas de estabilidad"
+    "Nuevo: Hassam · SUR-ViVOR en el Auditorio Bethlemitas de Bogotá",
+    "Ahora también hay eventos en Bogotá"
   ],
   "apk": "descargas/OnTicket.apk",
-  "publicada": "2026-11-03T07:41:15.563Z"
+  "publicada": "2026-11-03T07:51:09.099Z"
 }

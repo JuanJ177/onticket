@@ -1120,3 +1120,29 @@ function correoCompra(compra, sitio){
 }
 
 sincronizarReloj();
+
+
+
+
+/* ========================================
+   EVENTO REAL USADO COMO DEMOSTRACIÓN
+   (ev.oficial = { boletera, url, creditoFoto })
+======================================== */
+
+function htmlAvisoOficial(ev){
+
+    if(!ev.oficial) return "";
+
+    const o = ev.oficial;
+
+    return `
+        <div class="avisoOficial">
+            <i class="fa-solid fa-circle-info"></i>
+            <div>
+                <b>Evento real usado como demostración académica.</b>
+                Las boletas oficiales se venden en
+                <a href="${o.url}" target="_blank" rel="noopener">${o.boletera} <i class="fa-solid fa-arrow-up-right-from-square"></i></a>.
+                ${o.creditoFoto ? `<small>${o.creditoFoto}</small>` : ""}
+            </div>
+        </div>`;
+}

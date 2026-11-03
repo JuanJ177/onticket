@@ -541,6 +541,8 @@ function renderEventoHero(){
 
                 <p>${ev.descripcion}</p>
 
+                ${htmlAvisoOficial(ev)}
+
                 <div class="slideMeta">
                     <span><i class="fa-regular fa-calendar"></i> ${ev.fecha}</span>
                     <span><i class="fa-regular fa-clock"></i> ${ev.hora}</span>
