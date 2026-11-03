@@ -7,7 +7,7 @@
     "copiar": "node scripts/copiar.mjs",
     "sync": "npm run copiar && npx cap sync android",
     "android": "npm run sync && npx cap open android",
-    "apk": "npm run sync && cd android && gradlew.bat assembleDebug && cd .. && node scripts/publicar-apk.mjs"
+    "apk": "npm run sync && cd android && .\gradlew.bat assembleDebug && cd .. && node scripts/publicar-apk.mjs"
   },
   "dependencies": {
     "@capacitor-firebase/authentication": "^7.5.0",

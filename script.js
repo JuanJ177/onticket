@@ -2453,9 +2453,96 @@ function despuesDeEntrar(){
     }
 }
 
+/* ========================================
+   MI CUENTA
+======================================== */
+
+function iniciales(nombre){
+
+    return String(nombre || "?").trim().split(/\s+/).map(p => p[0]).slice(0, 2).join("").toUpperCase();
+}
+
+async function abrirCuenta(){
+
+    if(!currentUser) return abrirLogin();
+
+    const u = currentUser;
+
+    const roles = { admin: "Administrador", taquilla: "Taquilla", user: "Cliente" };
+
+    $("cuentaContenido").innerHTML = `
+        <div class="cuentaCabeza">
+            <div class="avatarGrandeWeb">${esc(iniciales(u.name))}</div>
+            <div>
+                <h2>${esc(u.name)}</h2>
+                <p>${esc(u.email)}</p>
+                <div class="cuentaChips">
+                    <span class="chipRol">${roles[u.role] || "Cliente"}</span>
+                    ${u.verificado
+                        ? `<span class="chipOk"><i class="fa-solid fa-circle-check"></i> Correo verificado</span>`
+                        : `<button class="chipPendiente" onclick="cerrarModal('cuentaModal'); abrirVerificacion();"><i class="fa-solid fa-envelope"></i> Verificar correo</button>`}
+                </div>
+            </div>
+        </div>
+
+        <div class="cuentaStats" id="cuentaStats">
+            <div><b><i class="fa-solid fa-spinner fa-spin"></i></b><small>Compras</small></div>
+            <div><b>—</b><small>Entradas</small></div>
+            <div><b>—</b><small>Total pagado</small></div>
+        </div>
+
+        <div class="cuentaOpciones">
+            <button onclick="cerrarModal('cuentaModal'); abrirMisCompras();"><i class="fa-solid fa-ticket"></i> Mis boletas</button>
+            ${["admin", "taquilla"].includes(u.role) ? `<button onclick="cerrarModal('cuentaModal'); abrirAdminPanel();"><i class="fa-solid fa-lock"></i> Panel administrativo</button>` : ""}
+            <button onclick="cambiarClave()"><i class="fa-solid fa-key"></i> Cambiar contraseña</button>
+            <button onclick="toggleTheme(); abrirCuenta();"><i class="fa-solid ${document.body.classList.contains("dark") ? "fa-sun" : "fa-moon"}"></i> ${document.body.classList.contains("dark") ? "Modo claro" : "Modo oscuro"}</button>
+            <button onclick="cerrarModal('cuentaModal'); irASeccion('descargaApp');"><i class="fa-solid fa-mobile-screen-button"></i> Descargar la app</button>
+            <button class="salir" onclick="cerrarSesion()"><i class="fa-solid fa-right-from-bracket"></i> Cerrar sesión</button>
+        </div>`;
+
+    abrirModal("cuentaModal");
+
+    // resumen de compras
+    try{
+
+        const compras = await DB.misCompras();
+
+        comprasUsuario = compras;
+
+        const entradas = compras.reduce((s, c) => s + personasCompra(c), 0);
+
+        const total = compras.reduce((s, c) => s + (c.total || 0), 0);
+
+        $("cuentaStats").innerHTML = `
+            <div><b>${compras.length}</b><small>Compra${compras.length === 1 ? "" : "s"}</small></div>
+            <div><b>${entradas}</b><small>Entrada${entradas === 1 ? "" : "s"}</small></div>
+            <div><b>${fmt(total)}</b><small>Total pagado</small></div>`;
+
+    }catch(e){
+
+        $("cuentaStats").innerHTML = `<p class="modalSub">No se pudo cargar el resumen de compras.</p>`;
+    }
+}
+
+async function cambiarClave(){
+
+    try{
+
+        await DB.recuperarClave(currentUser.email);
+
+        toast(`Te enviamos un correo a ${esc(currentUser.email)} para crear una contraseña nueva`, "fa-envelope-circle-check");
+
+    }catch(e){
+
+        toast(esc(e.message), "fa-circle-xmark");
+    }
+}
+
 async function cerrarSesion(){
 
     if(!confirm("¿Cerrar sesión?")) return;
+
+    cerrarModal("cuentaModal");
 
     await DB.logout();
 
@@ -2470,11 +2557,11 @@ function actualizarUsuario(){
 
     if(currentUser){
 
-        btnLogin.innerHTML = `<i class="fa-solid fa-user"></i> <span class="userName">${esc(currentUser.name)}</span> <i class="fa-solid fa-right-from-bracket logoutIcon"></i>`;
+        btnLogin.innerHTML = `<span class="avatarMini">${esc(iniciales(currentUser.name))}</span> <span class="userName">${esc(currentUser.name)}</span> <i class="fa-solid fa-chevron-down logoutIcon"></i>`;
 
-        btnLogin.title = "Cerrar sesión";
+        btnLogin.title = "Mi cuenta";
 
-        btnLogin.onclick = cerrarSesion;
+        btnLogin.onclick = abrirCuenta;
 
         adminBtn.style.display = ["admin", "taquilla"].includes(currentUser.role) ? "flex" : "none";
 

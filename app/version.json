@@ -1,9 +1,8 @@
 {
-  "codigo": 5,
-  "nombre": "1.5.0",
+  "codigo": 6,
+  "nombre": "1.5.1",
   "notas": [
-    "Nuevo: inicia sesión con tu cuenta de Google",
-    "La app ahora usa nuestro dominio onticket.co",
-    "Mejoras internas de seguridad y estabilidad"
+    "Nuevo evento: Hassam · Noche de Humor en Los Capachos",
+    "Mejoras internas de estabilidad"
   ]
 }

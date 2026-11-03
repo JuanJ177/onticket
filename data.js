@@ -141,5 +141,17 @@ const EVENTOS = [
         imagen: "img/luisalfonso.jpeg",
         descripcion: "Música popular y despecho en vivo. Brindemos la última copa juntos.",
         destacado: true
+    },
+
+    {
+        id: "hassam",
+        artista: "Hassam",
+        titulo: "Noche de Humor",
+        categoria: "Humor",
+        lugar: "capachos",
+        fechaISO: "2026-12-11T20:00",
+        imagen: "img/hassam.jpg",
+        descripcion: "El humorista colombiano Hassam llega a Villavicencio con una noche para reír sin parar. Palcos para ir con tu parche o puestos individuales. Apertura de puertas 7:00 PM.",
+        destacado: true
     }
 ];

@@ -4860,3 +4860,187 @@ body.dark .usadaTag{
     background:#2c2e36;
     color:#e5e7eb;
 }
+
+
+
+
+/* ========================================
+   MI CUENTA
+======================================== */
+
+.avatarMini{
+
+    width:26px;
+    height:26px;
+    border-radius:50%;
+    background:white;
+    color:var(--brand);
+    font-size:12px;
+    font-weight:800;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.cuentaBox{
+
+    width:480px;
+}
+
+.cuentaCabeza{
+
+    display:flex;
+    gap:16px;
+    align-items:center;
+    margin-bottom:20px;
+    padding-right:30px;
+}
+
+.cuentaCabeza h2{
+
+    margin:0;
+    padding:0;
+    font-size:22px;
+}
+
+.cuentaCabeza p{
+
+    color:var(--muted);
+    font-size:14px;
+    word-break:break-all;
+}
+
+.avatarGrandeWeb{
+
+    width:72px;
+    height:72px;
+    flex-shrink:0;
+    border-radius:50%;
+    background:linear-gradient(135deg, var(--brand), var(--brand2));
+    color:white;
+    font-family:var(--fontTitle);
+    font-size:26px;
+    font-weight:800;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-shadow:0 10px 24px rgba(255,102,0,0.3);
+}
+
+.cuentaChips{
+
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    margin-top:8px;
+}
+
+.chipRol,
+.chipOk,
+.chipPendiente{
+
+    font-size:12px;
+    font-weight:700;
+    padding:4px 10px;
+    border-radius:10px;
+    display:inline-flex;
+    gap:6px;
+    align-items:center;
+    border:none;
+}
+
+.chipRol{
+
+    background:var(--brandSoft);
+    color:var(--brand);
+}
+
+.chipOk{
+
+    background:rgba(16,185,129,0.14);
+    color:#0f8a5f;
+}
+
+.chipPendiente{
+
+    background:#fff4e5;
+    color:#92400e;
+    cursor:pointer;
+}
+
+.cuentaStats{
+
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:10px;
+    margin-bottom:18px;
+}
+
+.cuentaStats div{
+
+    background:var(--surface2);
+    border-radius:14px;
+    padding:12px;
+    text-align:center;
+    display:flex;
+    flex-direction:column;
+}
+
+.cuentaStats b{
+
+    font-family:var(--fontTitle);
+    font-size:18px;
+}
+
+.cuentaStats small{
+
+    color:var(--muted);
+    font-size:12px;
+}
+
+.cuentaOpciones{
+
+    display:flex;
+    flex-direction:column;
+    border:1px solid var(--border);
+    border-radius:16px;
+    overflow:hidden;
+}
+
+.cuentaOpciones button{
+
+    display:flex;
+    gap:14px;
+    align-items:center;
+    padding:14px 16px;
+    border:none;
+    border-bottom:1px solid var(--border);
+    background:var(--surface);
+    color:var(--text);
+    font-size:15px;
+    font-weight:600;
+    text-align:left;
+    cursor:pointer;
+}
+
+.cuentaOpciones button:last-child{
+
+    border-bottom:none;
+}
+
+.cuentaOpciones button:hover{
+
+    background:var(--surface2);
+}
+
+.cuentaOpciones button i{
+
+    width:20px;
+    color:var(--brand);
+}
+
+.cuentaOpciones .salir,
+.cuentaOpciones .salir i{
+
+    color:#e53935;
+}
