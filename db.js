@@ -181,6 +181,7 @@ const DB = (() => {
             "auth/too-many-requests": "Demasiados intentos. Espera un momento",
             "auth/network-request-failed": "Sin conexión a internet",
             "auth/popup-closed-by-user": "Cerraste la ventana de Google",
+            "auth/invalid-credential-google": "Google no pudo validar la cuenta",
             "auth/popup-blocked": "El navegador bloqueó la ventana de Google",
             "auth/unauthorized-domain": "Este dominio no está autorizado en Firebase (Authentication → Configuración → Dominios autorizados)",
             "auth/operation-not-allowed": "Este método de inicio de sesión no está habilitado en Firebase",
@@ -288,16 +289,34 @@ const DB = (() => {
                 }
             },
 
-            // Solo en navegador (en la app nativa Google bloquea la ventana emergente)
+            // En la web: ventana de Google. En la app Android: selector de cuentas
+            // nativo del celular (Google no permite su ventana dentro de una app).
             async loginGoogle(){
 
                 try{
 
-                    const proveedor = new firebase.auth.GoogleAuthProvider();
+                    const nativo = window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
 
-                    proveedor.setCustomParameters({ prompt: "select_account" });
+                    const plugin = nativo && window.Capacitor.Plugins.FirebaseAuthentication;
 
-                    const cred = await auth.signInWithPopup(proveedor);
+                    let cred;
+
+                    if(plugin){
+
+                        const r = await plugin.signInWithGoogle({ skipNativeAuth: true });
+
+                        if(!r || !r.credential || !r.credential.idToken) throw new Error("No se pudo iniciar sesión con Google");
+
+                        cred = await auth.signInWithCredential(firebase.auth.GoogleAuthProvider.credential(r.credential.idToken));
+
+                    }else{
+
+                        const proveedor = new firebase.auth.GoogleAuthProvider();
+
+                        proveedor.setCustomParameters({ prompt: "select_account" });
+
+                        cred = await auth.signInWithPopup(proveedor);
+                    }
 
                     usuario = await perfil(cred.user);
 
@@ -352,6 +371,11 @@ const DB = (() => {
             },
 
             async logout(){
+
+                // en la app, también se cierra la sesión de Google del selector nativo
+                const plugin = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.FirebaseAuthentication;
+
+                if(plugin) await plugin.signOut().catch(() => {});
 
                 await auth.signOut();
             },

@@ -1,12 +1,11 @@
 {
-  "codigo": 4,
-  "nombre": "1.4.0",
+  "codigo": 5,
+  "nombre": "1.5.0",
   "notas": [
-    "Arreglado: la flecha ← y el botón atrás del teléfono ahora regresan a la pantalla anterior",
-    "Compras más seguras: los precios y la disponibilidad los valida el servidor",
-    "Tu QR tiene una clave secreta propia: nadie más puede generarlo",
-    "Recibes tus boletas (y tu factura) por correo"
+    "Nuevo: inicia sesión con tu cuenta de Google",
+    "La app ahora usa nuestro dominio onticket.co",
+    "Mejoras internas de seguridad y estabilidad"
   ],
   "apk": "descargas/OnTicket.apk",
-  "publicada": "2026-11-03T03:44:01.715Z"
+  "publicada": "2026-11-03T07:24:40.193Z"
 }

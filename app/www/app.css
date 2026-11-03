@@ -3134,3 +3134,41 @@ body.claro .toast{
 
     box-shadow:0 12px 30px rgba(0,0,0,0.12);
 }
+
+
+
+/* ========================================
+   INICIAR CON GOOGLE
+======================================== */
+
+.separadorApp{
+
+    display:flex;
+    align-items:center;
+    gap:10px;
+    color:var(--muted);
+    font-size:12px;
+}
+
+.separadorApp::before,
+.separadorApp::after{
+
+    content:"";
+    flex:1;
+    height:1px;
+    background:var(--border);
+}
+
+.botonGoogle{
+
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    padding:14px;
+    border-radius:16px;
+    border:1px solid var(--border);
+    background:var(--surface2);
+    font-weight:700;
+}

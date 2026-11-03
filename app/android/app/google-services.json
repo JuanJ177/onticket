@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "167935562875",
+    "project_id": "onticket-bbd57",
+    "storage_bucket": "onticket-bbd57.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:167935562875:android:0345729aef6de8df6b7ede",
+        "android_client_info": {
+          "package_name": "com.onticket.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "167935562875-s6sl6bsbgvdcbv77n62j6tqfv460e75m.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.onticket.app",
+            "certificate_hash": "7989436204faf7bb580c7955c030519104025506"
+          }
+        },
+        {
+          "client_id": "167935562875-6tsb4mjlt0prklukgo0smnhup31g27b6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCpmcBYsFsay5fW__jVwYDw1l8DF5ZWZ70"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "167935562875-6tsb4mjlt0prklukgo0smnhup31g27b6.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
