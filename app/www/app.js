@@ -62,63 +62,81 @@ let intervaloDestacados = null;
 
 /* ========================================
    NAVEGACIÓN
-   Cada pantalla u hoja abierta es una "capa" en el historial,
-   así el botón atrás de Android cierra la última.
+   Cada pantalla u hoja abierta es una "capa" en una lista propia.
+   La flecha ← y el botón atrás del teléfono cierran la última.
+   (No se usa el historial del navegador: dentro de la app
+   instalada no guarda las pantallas.)
 ======================================== */
 
 const capas = [];
 
-let alLlegar = null;
-
-history.replaceState({ d:0 }, "");
-
 function abrirCapa(tipo, id){
 
     capas.push({ tipo, id });
-
-    history.pushState({ d: capas.length }, "");
 }
 
+// cierra la última pantalla u hoja abierta
 function atras(){
 
-    history.back();
+    const capa = capas.pop();
+
+    if(capa) cerrarCapa(capa);
 }
 
 // cierra capas hasta dejar "n" abiertas y luego ejecuta "luego"
 function cerrarHasta(n, luego){
 
-    const pasos = capas.length - n;
+    while(capas.length > n) cerrarCapa(capas.pop());
 
-    if(pasos <= 0){
+    if(luego) setTimeout(luego, 30);
+}
 
-        if(luego) luego();
+/* ----- botón atrás del teléfono (Android) -----
+   1. Si hay algo abierto (hoja, boleta, plano, evento…), lo cierra.
+   2. Si estás en otra pestaña, vuelve a Explorar.
+   3. En Explorar, pide tocar atrás otra vez para salir. */
+
+let ultimoAtras = 0;
+
+function botonAtrasTelefono(){
+
+    if(capas.length){
+
+        atras();
 
         return;
     }
 
-    alLlegar = luego || null;
+    if(!$("tab-explorar").classList.contains("active")){
 
-    history.go(-pasos);
+        irATab("explorar");
+
+        return;
+    }
+
+    if(Date.now() - ultimoAtras < 2000){
+
+        const app = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+
+        if(app) app.exitApp();
+
+        return;
+    }
+
+    ultimoAtras = Date.now();
+
+    toast("Toca atrás otra vez para salir", "fa-arrow-right-from-bracket");
 }
 
-window.addEventListener("popstate", e => {
+(function(){
 
-    const destino = (e.state && e.state.d) || 0;
+    const app = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
 
-    while(capas.length > destino){
+    if(app) app.addListener("backButton", botonAtrasTelefono);
 
-        cerrarCapa(capas.pop());
-    }
-
-    if(alLlegar){
-
-        const f = alLlegar;
-
-        alLlegar = null;
-
-        setTimeout(f, 30);
-    }
-});
+    // en el navegador (pruebas en el PC), la tecla Escape hace lo mismo
+    document.addEventListener("keydown", e => { if(e.key === "Escape") botonAtrasTelefono(); });
+})();
 
 function cerrarCapa(capa){
 
@@ -1866,15 +1884,21 @@ function protegerPantalla(activar){
     (activar ? privacidad.activar() : privacidad.desactivar()).catch(() => {});
 }
 
-function dibujarQR(codigo){
+async function dibujarQR(codigo){
+
+    const compra = compras.find(x => x.codigo === codigo) || { codigo };
+
+    const texto = await qrDinamico(compra);
 
     const qr = qrcode(0, "M");
 
-    qr.addData(qrDinamico(codigo));
+    qr.addData(texto);
 
     qr.make();
 
-    $("qrBoleta").innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+    const cont = $("qrBoleta");
+
+    if(cont) cont.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
 }
 
 function iniciarQR(codigo){

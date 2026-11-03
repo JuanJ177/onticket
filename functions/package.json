@@ -1,0 +1,17 @@
+{
+  "name": "onticket-functions",
+  "private": true,
+  "description": "Cloud Functions de OnTicket: compras, reservas, validación de entrada y correos",
+  "main": "index.js",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "catalogo": "node copiar-catalogo.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.10.0",
+    "firebase-functions": "^6.6.0",
+    "nodemailer": "^6.10.1"
+  }
+}

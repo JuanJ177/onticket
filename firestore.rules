@@ -1,7 +1,11 @@
 rules_version = '2';
 
 // Reglas de seguridad de OnTicket
-// Copiar en Firebase Console → Firestore Database → Reglas → Publicar
+// Se publican con: firebase deploy --only firestore:rules
+//
+// Desde las Cloud Functions, todo lo que mueve dinero o da acceso al evento
+// (compras, sillas vendidas, reservas, ingresos, facturas, correos) lo escribe
+// SOLO el servidor. Desde la web o la app únicamente se puede leer lo propio.
 
 service cloud.firestore {
 
@@ -9,11 +13,6 @@ service cloud.firestore {
 
     function logueado() {
       return request.auth != null;
-    }
-
-    // correo real: verificado por enlace, o cuenta de Google
-    function correoVerificado() {
-      return logueado() && request.auth.token.email_verified == true;
     }
 
     function rol() {
@@ -24,7 +23,6 @@ service cloud.firestore {
       return logueado() && rol() == 'admin';
     }
 
-    // personal de taquilla (o admin): valida boletas en la entrada
     function esStaff() {
       return logueado() && rol() in ['admin', 'taquilla'];
     }
@@ -42,37 +40,31 @@ service cloud.firestore {
       allow write: if esAdmin();
     }
 
-    // Compras: cada usuario ve las suyas; admin y taquilla ven todas.
-    // Para comprar se exige correo verificado.
-    // La taquilla solo puede modificar el conteo de ingresos.
+    // Compras: cada usuario ve las suyas (para ver sus boletas) y el admin todas.
+    // Crearlas, anularlas y registrar ingresos solo lo hace el servidor.
     match /compras/{codigo} {
-      allow read: if logueado() && (resource.data.uid == request.auth.uid || esStaff());
-      allow create: if correoVerificado() && request.resource.data.uid == request.auth.uid;
-      allow update: if esStaff() &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ingresos', 'ultimoIngreso', 'ultimoIngresoPor']);
-      allow delete: if logueado() && (resource.data.uid == request.auth.uid || esAdmin());
+      allow read: if logueado() && (resource.data.uid == request.auth.uid || esAdmin());
+      allow write: if false;
     }
 
-    // Sillas vendidas por evento: todos las ven (para pintar el plano)
+    // Sillas vendidas y apartadas: todos las ven (para pintar el plano)
     match /ventas/{eventoId} {
       allow read: if true;
-      allow write: if correoVerificado();
+      allow write: if false;
     }
 
-    // Sillas apartadas mientras alguien paga
     match /reservas/{eventoId} {
       allow read: if true;
-      allow write: if correoVerificado();
+      allow write: if false;
     }
 
-    // Consecutivo de facturas electrónicas
+    // Consecutivo de facturas y cola de correos: solo el servidor
     match /contadores/{id} {
-      allow read, write: if correoVerificado();
+      allow read, write: if false;
     }
 
-    // Cola de correos (los envía la extensión "Trigger Email")
     match /correos/{id} {
-      allow create: if correoVerificado();
+      allow read, write: if false;
     }
   }
 }

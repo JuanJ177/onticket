@@ -700,6 +700,7 @@ function crearCompra(evento, carrito, metodo, factura){
         fecha: `${evento.fecha} · ${evento.hora}`,
         fechaEvento: evento.fechaReal ? evento.fechaReal.toISOString() : null,
         ingresos: 0,
+        claveQR: claveAleatoria(),
         lugar: `${lugar.nombre}, ${lugar.ciudad}`,
         items: carrito.map(i => ({ ...i })),
         entradas: carrito.map(i => i.etiqueta),
@@ -782,62 +783,47 @@ function estadoIngreso(compra){
     return { total, usados, completa: usados >= total, parcial: usados > 0 && usados < total };
 }
 
+// firma de las compras antiguas (antes de las Cloud Functions)
 function firmaQR(codigo, v){
 
     return Math.floor(azar(`${codigo}|${v}|onticket`) * 0xffffff).toString(16).padStart(6, "0");
 }
 
-function qrDinamico(codigo){
+// Firma segura: HMAC-SHA256 con la clave secreta de cada compra (claveQR).
+// Solo el dueño de la boleta tiene esa clave; el servidor la valida en la entrada.
+async function firmaSegura(claveQR, codigo, v){
+
+    const bytes = new Uint8Array(claveQR.match(/../g).map(h => parseInt(h, 16)));
+
+    const llave = await crypto.subtle.importKey("raw", bytes, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+
+    const firma = await crypto.subtle.sign("HMAC", llave, new TextEncoder().encode(`${codigo}|${v}`));
+
+    return [...new Uint8Array(firma)].map(b => b.toString(16).padStart(2, "0")).join("").slice(0, 10);
+}
+
+// Texto del QR dinámico de una compra: CODIGO.ventana.firma (cambia cada 30 s)
+async function qrDinamico(compra){
 
     const v = ventanaQR();
 
-    return `${codigo}.${v}.${firmaQR(codigo, v)}`;
+    const firma = compra.claveQR ? await firmaSegura(compra.claveQR, compra.codigo, v) : firmaQR(compra.codigo, v);
+
+    return `${compra.codigo}.${v}.${firma}`;
+}
+
+function claveAleatoria(){
+
+    return [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
 
 
 /* ========================================
    VALIDACIÓN DE ENTRADA (TAQUILLA)
+   Con Firebase la hace el servidor (función validarBoleta).
+   En modo local se hace aquí con la misma lógica.
 ======================================== */
-
-// Lee el texto de un QR. Devuelve { codigo, valido, motivo }
-//  - QR dinámico:  CODIGO.ventana.firma  (vence en ~1 minuto)
-//  - Código escrito a mano: solo CODIGO (validación manual del personal)
-function leerQR(texto){
-
-    texto = String(texto || "").trim();
-
-    const partes = texto.split(".");
-
-    if(partes.length === 3){
-
-        const [codigo, v, firma] = partes;
-
-        const actual = ventanaQR();
-
-        const ventana = Number(v);
-
-        if(firmaQR(codigo, ventana) !== firma){
-
-            return { codigo, valido:false, motivo:"El QR no es auténtico (firma inválida)" };
-        }
-
-        // margen de ±1,5 minutos (relojes ya sincronizados); una captura vieja no pasa
-        if(ventana < actual - 3 || ventana > actual + 3){
-
-            return { codigo, valido:false, motivo:"QR vencido: parece una captura de pantalla. Pide abrir la boleta en la app." };
-        }
-
-        return { codigo, valido:true, dinamico:true };
-    }
-
-    if(/^ONTICKET-\d+-\d+$/i.test(texto)){
-
-        return { codigo: texto.toUpperCase(), valido:true, dinamico:false };
-    }
-
-    return { codigo:null, valido:false, motivo:"Este QR no es una boleta de OnTicket" };
-}
 
 function personasCompra(compra){
 
@@ -849,13 +835,50 @@ function personasCompra(compra){
 // Busca la compra del QR y dice si puede entrar
 async function validarEntrada(texto){
 
-    const qr = leerQR(texto);
+    // con Firebase: valida el servidor (nadie puede falsificar la firma ni la hora)
+    if(DB.validarBoleta) return DB.validarBoleta(texto);
 
-    if(!qr.valido) return { ok:false, motivo: qr.motivo, codigo: qr.codigo };
+    texto = String(texto || "").trim();
 
-    const compra = await DB.buscarCompra(qr.codigo);
+    const partes = texto.split(".");
 
-    if(!compra) return { ok:false, motivo:"No existe una compra con este código", codigo: qr.codigo };
+    let codigo, dinamico = false;
+
+    if(partes.length === 3){
+
+        codigo = partes[0];
+
+        dinamico = true;
+
+    }else if(/^ONTICKET-\d+-\d+$/i.test(texto)){
+
+        codigo = texto.toUpperCase();
+
+    }else{
+
+        return { ok:false, motivo:"Este QR no es una boleta de OnTicket" };
+    }
+
+    const compra = await DB.buscarCompra(codigo);
+
+    if(!compra) return { ok:false, motivo:"No existe una compra con este código", codigo };
+
+    if(dinamico){
+
+        const ventana = Number(partes[1]);
+
+        const correcta = compra.claveQR ? await firmaSegura(compra.claveQR, codigo, ventana) : firmaQR(codigo, ventana);
+
+        if(correcta !== partes[2]) return { ok:false, codigo, motivo:"El QR no es auténtico (firma inválida)" };
+
+        // margen de ±1,5 minutos (relojes sincronizados); una captura vieja no pasa
+        const actual = ventanaQR();
+
+        if(ventana < actual - 3 || ventana > actual + 3){
+
+            return { ok:false, codigo, motivo:"QR vencido: parece una captura de pantalla. Pide abrir la boleta en la app." };
+        }
+    }
 
     const total = personasCompra(compra);
 
@@ -865,10 +888,10 @@ async function validarEntrada(texto){
 
         const hora = compra.ultimoIngreso ? " · último ingreso " + new Date(compra.ultimoIngreso).toLocaleTimeString("es-CO") : "";
 
-        return { ok:false, compra, total, usados, codigo: qr.codigo, motivo:`Esta boleta ya ingresó completa (${usados} de ${total})${hora}` };
+        return { ok:false, compra, total, usados, codigo, motivo:`Esta boleta ya ingresó completa (${usados} de ${total})${hora}` };
     }
 
-    return { ok:true, compra, total, usados, restantes: total - usados, manual: !qr.dinamico, codigo: qr.codigo };
+    return { ok:true, compra, total, usados, restantes: total - usados, manual: !dinamico, codigo };
 }
 
 

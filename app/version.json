@@ -1,11 +1,10 @@
 {
-  "codigo": 3,
-  "nombre": "1.3.0",
+  "codigo": 4,
+  "nombre": "1.4.0",
   "notas": [
-    "Arreglado: la app se veía oscura, como con poco brillo",
-    "Modo claro, oscuro o automático (como el celular)",
-    "Tu boleta está protegida: no se le pueden tomar capturas al QR",
-    "Al entrar al evento, tu boleta se marca como utilizada al instante",
-    "Validación del QR más precisa en la entrada"
+    "Arreglado: la flecha ← y el botón atrás del teléfono ahora regresan a la pantalla anterior",
+    "Compras más seguras: los precios y la disponibilidad los valida el servidor",
+    "Tu QR tiene una clave secreta propia: nadie más puede generarlo",
+    "Recibes tus boletas (y tu factura) por correo"
   ]
 }

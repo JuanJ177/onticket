@@ -30,7 +30,8 @@ const librerias = {
     "jsqr/dist/jsQR.js": "jsQR.js",
     "firebase/firebase-app-compat.js": "firebase-app-compat.js",
     "firebase/firebase-auth-compat.js": "firebase-auth-compat.js",
-    "firebase/firebase-firestore-compat.js": "firebase-firestore-compat.js"
+    "firebase/firebase-firestore-compat.js": "firebase-firestore-compat.js",
+    "firebase/firebase-functions-compat.js": "firebase-functions-compat.js"
 };
 
 Object.entries(librerias).forEach(([origen, destino]) =>

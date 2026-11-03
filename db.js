@@ -14,12 +14,19 @@
      ventas/{eventoId}     { ids:[...], general:{ zonaId: cantidad } }
      reservas/{eventoId}   { holds:{ id: { uid, expira, general?, cantidad? } } }
      contadores/facturas   { valor }
-     correos/{id}          { to, message:{ subject, html } }  (extensión Trigger Email)
+     correos/{id}          { to, message:{ subject, html } }  (los envía la función enviarCorreo)
+
+   En modo Firebase, comprar, reservar, anular y la taquilla pasan por las
+   Cloud Functions (carpeta functions/): el navegador no puede escribir
+   compras, ventas, reservas ni ingresos.
 ======================================== */
 
 const DB = (() => {
 
     const forzarLocal = /[?&]modo=local\b/.test(location.search);
+
+    // pruebas en el PC con el emulador de Firebase (no toca el proyecto real)
+    const usarEmulador = /[?&]emulador\b/.test(location.search);
 
     const usarFirebase =
         !forzarLocal &&
@@ -131,6 +138,33 @@ const DB = (() => {
         const auth = firebase.auth();
 
         const fs = firebase.firestore();
+
+        // Cloud Functions (servidor): compras, reservas, taquilla
+        const fn = firebase.app().functions("southamerica-east1");
+
+        if(usarEmulador){
+
+            auth.useEmulator("http://127.0.0.1:9099");
+
+            fs.useEmulator("127.0.0.1", 8080);
+
+            fn.useEmulator("127.0.0.1", 5001);
+        }
+
+        async function llamar(nombre, datos){
+
+            try{
+
+                return (await fn.httpsCallable(nombre)(datos)).data;
+
+            }catch(e){
+
+                throw new Error(e.message || "No se pudo completar la operación");
+            }
+        }
+
+        // lo único que se envía al servidor: qué ubicaciones quiere (nunca el precio)
+        const pedido = items => items.map(i => ({ tipo: i.tipo, key: i.key, cantidad: i.cantidad }));
 
         auth.languageCode = "es";
 
@@ -370,118 +404,42 @@ const DB = (() => {
                 );
             },
 
-            // Aparta las ubicaciones del carrito por unos minutos mientras se paga
+            // Aparta las ubicaciones del carrito por unos minutos mientras se paga (en el servidor)
             async reservar(eventoId, items, minutos){
 
                 if(!usuario) throw new Error("Debes iniciar sesión");
 
-                const uid = usuario.uid;
-
-                const expira = Date.now() + minutos * 60000;
-
-                const refV = fs.doc(`ventas/${eventoId}`);
-
-                const refR = fs.doc(`reservas/${eventoId}`);
-
-                await fs.runTransaction(async t => {
-
-                    const v = await t.get(refV);
-
-                    const r = await t.get(refR);
-
-                    conflicto(v.exists ? v.data() : vacioVentas(), { items });
-
-                    const holds = r.exists ? (r.data().holds || {}) : {};
-
-                    const ajeno = holdAjeno(holds, items, uid);
-
-                    if(ajeno) throw new Error(`${ajeno.etiqueta} la está comprando otra persona. Elige otra ubicación.`);
-
-                    t.set(refR, { holds: agregarHolds(limpiarHolds(holds, uid), items, uid, expira) });
-                });
-
-                return expira;
+                return (await llamar("reservar", { eventoId, items: pedido(items), minutos })).expira;
             },
 
             async liberar(eventoId){
 
                 if(!usuario) return;
 
-                const refR = fs.doc(`reservas/${eventoId}`);
-
-                await fs.runTransaction(async t => {
-
-                    const r = await t.get(refR);
-
-                    if(r.exists) t.set(refR, { holds: limpiarHolds(r.data().holds, usuario.uid) });
-
-                }).catch(() => {});
+                await llamar("liberar", { eventoId }).catch(() => {});
             },
 
 
             /* ----- compras ----- */
 
+            // el número de factura lo asigna el servidor al comprar
             async siguienteFactura(){
 
-                const ref = fs.doc("contadores/facturas");
-
-                return fs.runTransaction(async t => {
-
-                    const snap = await t.get(ref);
-
-                    const valor = (snap.exists ? snap.data().valor : 1000) + 1;
-
-                    t.set(ref, { valor });
-
-                    return valor;
-                });
+                return 0;
             },
 
-            // Guarda la compra y marca las ubicaciones como vendidas en UNA transacción
-            // (si dos personas compran la misma silla al tiempo, solo una lo logra)
+            // El servidor calcula precios, revisa disponibilidad, guarda la compra,
+            // genera la factura y deja el correo listo para enviar.
             async comprar(compra){
 
                 if(!usuario) throw new Error("Debes iniciar sesión");
 
-                const uid = usuario.uid;
-
-                const datos = limpiar({ ...compra, uid, email: usuario.email, usuario: usuario.name });
-
-                const refV = fs.doc(`ventas/${compra.eventoId}`);
-
-                const refR = fs.doc(`reservas/${compra.eventoId}`);
-
-                try{
-
-                    await fs.runTransaction(async t => {
-
-                        const v = await t.get(refV);
-
-                        const r = await t.get(refR);
-
-                        const ventas = v.exists ? v.data() : vacioVentas();
-
-                        const holds = r.exists ? (r.data().holds || {}) : {};
-
-                        conflicto(ventas, compra);
-
-                        const ajeno = holdAjeno(holds, compra.items, uid);
-
-                        if(ajeno) throw new Error(`${ajeno.etiqueta} la está comprando otra persona.`);
-
-                        t.set(refV, aplicarVenta(ventas, compra, 1));
-
-                        t.set(refR, { holds: limpiarHolds(holds, uid) });
-
-                        t.set(fs.doc(`compras/${compra.codigo}`), datos);
-                    });
-
-                }catch(e){
-
-                    throw e.code ? traducir(e) : e;
-                }
-
-                return datos;
+                return llamar("comprar", {
+                    eventoId: compra.eventoId,
+                    items: pedido(compra.items),
+                    metodo: compra.metodo,
+                    factura: compra.factura ? compra.factura.adquiriente : null
+                });
             },
 
             async misCompras(){
@@ -495,19 +453,7 @@ const DB = (() => {
 
             async eliminarCompra(compra){
 
-                const refV = fs.doc(`ventas/${compra.eventoId}`);
-
-                await fs.runTransaction(async t => {
-
-                    const snap = await t.get(refV);
-
-                    if(snap.exists && compra.items){
-
-                        t.set(refV, aplicarVenta(snap.data(), compra, -1));
-                    }
-
-                    t.delete(fs.doc(`compras/${compra.codigo}`));
-                });
+                await llamar("eliminarCompra", { codigo: compra.codigo });
             },
 
             async todasLasCompras(){
@@ -540,46 +486,20 @@ const DB = (() => {
                 return fs.doc(`compras/${codigo}`).onSnapshot(snap => { if(snap.exists) cb(snap.data()); }, () => {});
             },
 
+            // la taquilla valida el QR en el servidor (firma secreta + hora del servidor)
+            async validarBoleta(texto){
+
+                return llamar("validarBoleta", { texto });
+            },
+
             async registrarIngreso(codigo, n){
 
-                const ref = fs.doc(`compras/${codigo}`);
-
-                try{
-
-                    return await fs.runTransaction(async t => {
-
-                        const snap = await t.get(ref);
-
-                        if(!snap.exists) throw new Error("La compra no existe");
-
-                        const cambio = registrarIngresoEn(snap.data(), n, usuario && usuario.email);
-
-                        t.update(ref, cambio);
-
-                        return { ...snap.data(), ...cambio };
-                    });
-
-                }catch(e){
-
-                    throw e.code ? traducir(e) : e;
-                }
+                return llamar("registrarIngreso", { codigo, n });
             },
 
 
-            /* ----- correos (los envía la extensión Trigger Email) ----- */
-
-            async encolarCorreo(para, mensaje){
-
-                const destinos = [...new Set(para.filter(Boolean))];
-
-                if(!destinos.length) return;
-
-                await fs.collection("correos").add({
-                    to: destinos,
-                    message: mensaje,
-                    creado: firebase.firestore.FieldValue.serverTimestamp()
-                });
-            }
+            // los correos los prepara y envía el servidor (función enviarCorreo)
+            async encolarCorreo(){}
         };
     }
 

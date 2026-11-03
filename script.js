@@ -1931,15 +1931,17 @@ function verFactura(){
     w.document.close();
 }
 
-function actualizarQR(){
+async function actualizarQR(){
 
     const cont = $("qrcode");
 
     if(!cont) return;
 
+    const texto = await qrDinamico(compraEnPantalla);
+
     const qr = qrcode(0, "M");
 
-    qr.addData(qrDinamico(compraEnPantalla.codigo));
+    qr.addData(texto);
 
     qr.make();
 

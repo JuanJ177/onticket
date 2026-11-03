@@ -1,0 +1,7 @@
+# archivos que no hacen parte de la web publicada
+functions/
+firebase.json
+.firebaserc
+firestore.rules
+app/android/
+app/node_modules/

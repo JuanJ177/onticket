@@ -141,3 +141,39 @@ npm run android
 - **Ocupación de demostración:** el plano simula ventas por localidad con un azar estable para
   que se vea real; las compras reales se suman encima. Las estadísticas lo indican.
 - **Pruebas sin Firebase:** abrir la web con `?modo=local` usa el almacenamiento del navegador.
+
+
+---
+
+## 7. Cloud Functions (servidor)
+
+Carpeta `functions/`. Todo lo que mueve dinero o da acceso al evento lo hace el servidor:
+
+| Función | Qué hace |
+|---|---|
+| `comprar` | Calcula precios, servicio e IVA con el catálogo oficial, revisa disponibilidad, guarda la compra, genera la factura (consecutivo + CUFE) y deja el correo listo |
+| `reservar` / `liberar` | Aparta las ubicaciones 10 minutos mientras se paga |
+| `eliminarCompra` | Anula una compra (dueño, si nadie ha entrado; o admin) y libera las ubicaciones |
+| `validarBoleta` | Taquilla: revisa el QR con la clave secreta de la compra y la hora del servidor |
+| `registrarIngreso` | Taquilla: cuenta cuántas personas entraron |
+| `enviarCorreo` | Envía el correo de boletas y factura desde onticket.co@gmail.com |
+
+- Cada compra tiene una **clave secreta propia** (`claveQR`). El QR dinámico se firma con
+  HMAC-SHA256 usando esa clave: solo el dueño puede generarlo y solo el servidor lo valida.
+- Las reglas de Firestore **no permiten** escribir compras, ventas, reservas, ingresos,
+  facturas ni correos desde el navegador o la app.
+- La contraseña de aplicación de Gmail está en Secret Manager (`GMAIL_CLAVE`).
+
+Comandos (desde la carpeta del proyecto):
+
+```bash
+firebase deploy --only functions          # publicar las funciones
+firebase deploy --only firestore:rules    # publicar las reglas
+firebase emulators:start --only auth,firestore,functions   # probar en el PC
+```
+
+Para probar contra el emulador, abrir la web o la app con `?emulador` en la dirección.
+
+**Control de gastos:** límite de gasto por servicio en Firebase (Functions: $20.000 COP/mes),
+presupuesto con alertas de $40.000 COP, máximo 5 instancias por función y limpieza automática
+de copias viejas del código (1 día).
