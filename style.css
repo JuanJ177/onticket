@@ -5100,3 +5100,173 @@ body.dark .usadaTag{
     color:var(--muted);
     margin-bottom:18px;
 }
+
+
+
+
+/* ========================================
+   PROMOTORES Y EDITOR DE PLANOS
+======================================== */
+
+.badge.amarillo{ background:rgba(245,180,0,0.18); color:#b07d00; }
+.badge.rojo{ background:rgba(229,57,53,0.15); color:#e53935; }
+
+.eventoAdmin.porAprobar{ outline:2px solid #f5b400; outline-offset:2px; }
+
+.comentarioRevision{ color:#e53935; font-weight:600; }
+
+.lugarNuevo{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+    padding:14px;
+    border-radius:14px;
+    background:var(--surface2);
+}
+
+.planoPropioBox{
+    display:flex;
+    gap:16px;
+    align-items:center;
+    justify-content:space-between;
+    padding:16px;
+    border-radius:16px;
+    border:2px dashed var(--brand);
+    background:var(--brandSoft);
+}
+
+.planoPropioBox small{ display:block; color:var(--muted); margin-top:4px; }
+
+.zonasResumen{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; font-size:13px; }
+
+.zonasResumen span{ display:inline-flex; gap:6px; align-items:center; background:var(--surface); padding:4px 10px; border-radius:10px; }
+
+.zonasResumen i{ width:10px; height:10px; border-radius:50%; display:inline-block; }
+
+.editorPlanoBox{ width:min(1400px, 96vw); max-height:94vh; display:flex; flex-direction:column; }
+
+.editorPlano{
+    display:grid;
+    grid-template-columns:330px 1fr;
+    gap:18px;
+    min-height:0;
+    flex:1;
+    margin:10px 0;
+}
+
+.editorPanel{
+    overflow-y:auto;
+    max-height:70vh;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+    padding-right:6px;
+}
+
+.editorPanel section{
+    background:var(--surface2);
+    border-radius:14px;
+    padding:12px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+}
+
+.editorPanel h4{ margin:0; font-family:var(--fontTitle); font-size:14px; }
+
+.editorPanel label{ display:flex; flex-direction:column; gap:4px; font-size:12px; font-weight:600; color:var(--muted); }
+
+.editorPanel input:not([type=range]):not([type=color]), .editorPanel select{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:8px 10px;
+    color:var(--text);
+    font-size:14px;
+    width:100%;
+}
+
+.editorPanel .ayuda{ font-size:12px; color:var(--muted); margin:0; }
+
+.dosCampos{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+
+.subirFondo{ cursor:pointer; justify-content:center; }
+
+.botonesAgregar{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+
+.botonesAgregar button{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    padding:10px;
+    border-radius:10px;
+    border:1px solid var(--border);
+    background:var(--surface);
+    color:var(--text);
+    font-weight:600;
+    font-size:13px;
+    cursor:pointer;
+}
+
+.botonesAgregar button:hover{ border-color:var(--brand); color:var(--brand); }
+
+.botonesAgregar button i{ color:var(--brand); }
+
+.zonaEditor{ display:flex; gap:8px; align-items:flex-start; padding:8px; border-radius:10px; background:var(--surface); }
+
+.zonaEditor input[type=color]{ width:30px; height:30px; border:none; border-radius:8px; padding:0; background:none; cursor:pointer; flex-shrink:0; }
+
+.zonaEditorDatos{ flex:1; display:flex; flex-direction:column; gap:4px; min-width:0; }
+
+.zonaEditorDatos small{ color:var(--muted); font-size:11px; }
+
+.zonaPrecios{ display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+
+.iconoBorrar{ background:none; border:none; color:var(--muted); cursor:pointer; padding:6px; }
+
+.iconoBorrar:hover{ color:#e53935; }
+
+.tituloBloque{ font-family:var(--fontTitle); }
+
+.botonesBloque{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+
+.editorLienzo{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    min-width:0;
+    max-height:70vh;
+}
+
+#lienzoPlano{
+    width:100%;
+    flex:1;
+    min-height:0;
+    background:#111116;
+    border-radius:16px;
+    touch-action:none;
+    user-select:none;
+}
+
+.marcoBloque{ fill:transparent; stroke:rgba(255,255,255,0.25); stroke-dasharray:4 4; cursor:move; }
+
+.marcoBloque:hover{ stroke:rgba(255,255,255,0.6); }
+
+.marcoBloque.sel{ stroke:var(--brand); stroke-width:2.5; stroke-dasharray:none; fill:rgba(255,102,0,0.08); }
+
+.tiradorBloque{ fill:var(--brand); stroke:white; stroke-width:2; cursor:nwse-resize; }
+
+.resumenPlano{ display:flex; flex-wrap:wrap; gap:14px; font-size:14px; color:var(--muted); }
+
+.resumenPlano b{ color:var(--text); }
+
+@media (max-width:900px){
+
+    .editorPlano{ grid-template-columns:1fr; }
+
+    .editorPanel, .editorLienzo{ max-height:none; }
+
+    #lienzoPlano{ min-height:360px; }
+
+    .lugarNuevo{ grid-template-columns:1fr; }
+}

@@ -353,7 +353,11 @@ async function prepararCompra(auth, datos){
 
     const evento = await obtenerEvento(eventoId);
 
-    if(evento.visible === false) throw falla("failed-precondition", "Este evento no está a la venta");
+    // eventos de promotores: solo se venden cuando el administrador los aprueba
+    if(evento.visible === false || (evento.estado && evento.estado !== "aprobado")){
+
+        throw falla("failed-precondition", "Este evento no está a la venta");
+    }
 
     const items = construir(evento, pedidos);
 
@@ -361,7 +365,7 @@ async function prepararCompra(auth, datos){
 
     const usuario = await perfil(auth.uid);
 
-    const lugar = cat.LUGARES[evento.lugar];
+    const lugar = cat.lugarDe(evento);
 
     const f = cat.fechaReal(evento);
 
@@ -682,6 +686,82 @@ exports.verificarPago = onCall(async request => {
     if(!r.ok) throw falla("not-found", "Wompi no encontró la transacción");
 
     return aplicarTransaccion((await r.json()).data);
+});
+
+
+
+/* ========================================
+   PROMOTOR: VENTAS DE SUS EVENTOS
+   Solo ve sus propios eventos y nunca los datos personales de
+   los compradores (nombre, correo, factura ni clave del QR).
+======================================== */
+
+exports.ventasPromotor = onCall(async request => {
+
+    const auth = exigirUsuario(request, false);
+
+    const rol = (await perfil(auth.uid)).role;
+
+    if(rol !== "promotor" && rol !== "admin") throw falla("permission-denied", "Solo para promotores");
+
+    const snap = await db.collection("eventos").where("promotorUid", "==", auth.uid).get();
+
+    const eventos = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+
+    const compras = [];
+
+    // Firestore permite buscar hasta 30 eventos a la vez
+    for(let i = 0; i < eventos.length; i += 30){
+
+        const ids = eventos.slice(i, i + 30).map(e => e.id);
+
+        const r = await db.collection("compras").where("eventoId", "in", ids).get();
+
+        r.docs.forEach(d => compras.push(d.data()));
+    }
+
+    return {
+        eventos: eventos.map(e => {
+
+            const suyas = compras.filter(c => c.eventoId === e.id);
+
+            const zonas = {};
+
+            suyas.forEach(c => (c.items || []).forEach(i => {
+
+                const z = zonas[i.zona] = zonas[i.zona] || { personas: 0, boleteria: 0 };
+
+                z.personas += i.tipo === "general" ? i.cantidad : (i.personas || 1);
+
+                z.boleteria += i.precio * i.cantidad;
+            }));
+
+            return {
+                id: e.id,
+                artista: e.artista,
+                titulo: e.titulo,
+                estado: e.estado || "aprobado",
+                compras: suyas.length,
+                personas: suyas.reduce((s, c) => s + personasCompra(c), 0),
+                ingresaron: suyas.reduce((s, c) => s + (c.ingresos || 0), 0),
+                boleteria: suyas.reduce((s, c) => s + (c.subtotal || 0), 0),
+                zonas
+            };
+        }),
+        compras: compras
+            .sort((a, b) => String(b.fechaCompra).localeCompare(String(a.fechaCompra)))
+            .slice(0, 300)
+            .map(c => ({
+                codigo: c.codigo,
+                eventoId: c.eventoId,
+                evento: c.evento,
+                fechaCompra: c.fechaCompra,
+                ubicaciones: (c.items || []).map(i => i.etiqueta),
+                personas: personasCompra(c),
+                boleteria: c.subtotal || 0,
+                ingresos: c.ingresos || 0
+            }))
+    };
 });
 
 

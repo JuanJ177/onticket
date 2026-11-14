@@ -117,10 +117,19 @@ function usarEventos(lista){
     EVENTOS.splice(0, EVENTOS.length, ...nuevos);
 }
 
-// Eventos que ve el público (los ocultos solo los ve el administrador)
+// Eventos que ve el público: visibles y, si los creó un promotor, ya aprobados
 function eventosPublicos(){
 
-    return EVENTOS.filter(e => e.visible !== false);
+    return EVENTOS.filter(e => e.visible !== false && (!e.estado || e.estado === "aprobado"));
+}
+
+// La ocupación de demostración (sillas que aparecen vendidas) es solo para los
+// eventos de ejemplo. Un evento nuevo arranca en cero: solo cuenta lo vendido de verdad.
+function esDemostracion(evento){
+
+    if(evento.demo !== undefined) return evento.demo === true;
+
+    return EVENTOS_EJEMPLO.some(e => e.id === evento.id);
 }
 
 function diasParaEvento(evento){
@@ -203,12 +212,22 @@ try{
    LUGARES Y PRECIOS
 ======================================== */
 
+// un evento puede traer su propio lugar y plano (creados en el editor de planos)
 function lugarDe(evento){
 
-    return LUGARES[evento.lugar];
+    return evento.lugarPropio || LUGARES[evento.lugar];
 }
 
+const planosPropios = new WeakMap();
+
 function planoDe(evento){
+
+    if(evento.diseno){
+
+        if(!planosPropios.has(evento.diseno)) planosPropios.set(evento.diseno, construirPlanoPropio(evento.diseno));
+
+        return planosPropios.get(evento.diseno);
+    }
 
     return PLANOS[lugarDe(evento).plano];
 }
@@ -314,7 +333,9 @@ function crearEstadoVenta(evento, ventas = {}, reservas = {}, uid = null){
     // Ocupación de demostración: cada localidad de cada evento tiene su propio
     // nivel de ventas (como en la vida real, unas zonas se venden más que otras).
     // Se simula con un azar estable; las compras reales se suman encima.
-    const tasaZona = zonaId => 0.1 + 0.7 * azar(evento.id + "|zona|" + zonaId);
+    const demo = esDemostracion(evento);
+
+    const tasaZona = zonaId => demo ? 0.1 + 0.7 * azar(evento.id + "|zona|" + zonaId) : 0;
 
     const vendidoReal = (id, tasa) => azar(evento.id + "|" + id) < tasa || guardados.has(id);
 

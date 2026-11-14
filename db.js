@@ -8,7 +8,7 @@
    - Si no (o con ?modo=local en la URL), usa localStorage.
 
    Colecciones de Firestore:
-     usuarios/{uid}        { name, email, role: user | taquilla | admin }
+     usuarios/{uid}        { name, email, role: user | taquilla | promotor | admin }
      eventos/{id}          { artista, titulo, fechaISO, lugar, precios, ... }
      compras/{codigo}      { uid, ...compra, ingresos, ultimoIngreso }
      ventas/{eventoId}     { ids:[...], general:{ zonaId: cantidad } }
@@ -400,6 +400,32 @@ const DB = (() => {
                 await fs.doc(`eventos/${id}`).delete();
             },
 
+            // imagen guía del editor de planos (aparte: los eventos deben ser livianos)
+            async guardarFondoPlano(id, imagen, promotorUid){
+
+                if(imagen) await fs.doc(`fondosPlano/${id}`).set({ imagen, promotorUid: promotorUid || null });
+            },
+
+            async cargarFondoPlano(id){
+
+                try{
+
+                    const snap = await fs.doc(`fondosPlano/${id}`).get();
+
+                    return snap.exists ? snap.data().imagen : null;
+
+                }catch(e){
+
+                    return null;
+                }
+            },
+
+            // el servidor calcula las ventas de los eventos del promotor
+            async ventasPromotor(){
+
+                return llamar("ventasPromotor", {});
+            },
+
             async publicarEventos(lista){
 
                 const lote = fs.batch();
@@ -732,6 +758,44 @@ const DB = (() => {
             async eliminarEvento(id){
 
                 escribir("eventosLocal", (leer("eventosLocal", null) || EVENTOS_EJEMPLO).filter(e => e.id !== id));
+            },
+
+            async guardarFondoPlano(id, imagen){
+
+                if(imagen) escribir("fondoPlano_" + id, imagen);
+            },
+
+            async cargarFondoPlano(id){
+
+                return leer("fondoPlano_" + id, null);
+            },
+
+            async ventasPromotor(){
+
+                const mios = (leer("eventosLocal", null) || []).filter(e => usuario && e.promotorUid === usuario.uid);
+
+                const compras = leer("compras", []).filter(c => mios.some(e => e.id === c.eventoId));
+
+                return {
+                    eventos: mios.map(e => {
+
+                        const suyas = compras.filter(c => c.eventoId === e.id);
+
+                        return {
+                            id: e.id, artista: e.artista, titulo: e.titulo, estado: e.estado || "aprobado",
+                            compras: suyas.length,
+                            personas: suyas.reduce((s, c) => s + personasCompra(c), 0),
+                            ingresaron: suyas.reduce((s, c) => s + (c.ingresos || 0), 0),
+                            boleteria: suyas.reduce((s, c) => s + (c.subtotal || 0), 0),
+                            zonas: {}
+                        };
+                    }),
+                    compras: compras.map(c => ({
+                        codigo: c.codigo, eventoId: c.eventoId, evento: c.evento, fechaCompra: c.fechaCompra,
+                        ubicaciones: (c.items || []).map(i => i.etiqueta), personas: personasCompra(c),
+                        boleteria: c.subtotal || 0, ingresos: c.ingresos || 0
+                    }))
+                };
             },
 
             async publicarEventos(lista){

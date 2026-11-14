@@ -202,3 +202,20 @@ de copias viejas del código (1 día).
 
 Datos de prueba de Wompi (sandbox): tarjeta `4242 4242 4242 4242` (aprobada) o
 `4111 1111 1111 1111` (rechazada), cualquier fecha futura y CVC; Nequi `3991111111` (aprobado).
+
+---
+
+## 9. Promotores y planos propios
+
+- **Rol `promotor`:** en Firestore → `usuarios/{uid}` → `role: "promotor"`. En la web le aparece **Mi panel**.
+- El promotor solo ve **sus** eventos y **sus** ventas (calculadas por la función `ventasPromotor`,
+  sin correos ni datos personales de los compradores).
+- Lo que crea queda **Por aprobar**. El administrador lo revisa en *Admin → Eventos* y le da
+  **Aprobar** (sale a la venta) o **Rechazar** (con un comentario que el promotor ve).
+  Ya aprobado, el promotor no lo puede cambiar ni borrar.
+- **Lugar nuevo:** en el formulario de evento → Lugar → *Lugar nuevo (con plano propio)* → **Diseñar plano**.
+  En el editor se sube la imagen del plano real como guía y se arman bloques (escenario, sillas,
+  palcos de 10 en punticos o cuadros con su % de individuales, zonas generales, textos).
+  Cada localidad tiene su nombre, color y precio. El diseño se guarda en el evento (`diseno`) y
+  la web, la app y el servidor generan el mismo plano con `construirPlanoPropio` (planos.js).
+- Los eventos de ejemplo tienen ocupación de demostración; los creados desde el panel arrancan en cero.

@@ -2650,7 +2650,7 @@ async function abrirCuenta(){
 
     const u = currentUser;
 
-    const roles = { admin: "Administrador", taquilla: "Taquilla", user: "Cliente" };
+    const roles = { admin: "Administrador", taquilla: "Taquilla", promotor: "Promotor", user: "Cliente" };
 
     $("cuentaContenido").innerHTML = `
         <div class="cuentaCabeza">
@@ -2676,6 +2676,7 @@ async function abrirCuenta(){
         <div class="cuentaOpciones">
             <button onclick="cerrarModal('cuentaModal'); abrirMisCompras();"><i class="fa-solid fa-ticket"></i> Mis boletas</button>
             ${["admin", "taquilla"].includes(u.role) ? `<button onclick="cerrarModal('cuentaModal'); abrirAdminPanel();"><i class="fa-solid fa-lock"></i> Panel administrativo</button>` : ""}
+            ${u.role === "promotor" ? `<button onclick="cerrarModal('cuentaModal'); abrirAdminPanel();"><i class="fa-solid fa-bullhorn"></i> Panel del promotor</button>` : ""}
             <button onclick="cambiarClave()"><i class="fa-solid fa-key"></i> Cambiar contraseña</button>
             <button onclick="toggleTheme(); abrirCuenta();"><i class="fa-solid ${document.body.classList.contains("dark") ? "fa-sun" : "fa-moon"}"></i> ${document.body.classList.contains("dark") ? "Modo claro" : "Modo oscuro"}</button>
             <button onclick="cerrarModal('cuentaModal'); irASeccion('descargaApp');"><i class="fa-solid fa-mobile-screen-button"></i> Descargar la app</button>
@@ -2745,7 +2746,11 @@ function actualizarUsuario(){
 
         btnLogin.onclick = abrirCuenta;
 
-        adminBtn.style.display = ["admin", "taquilla"].includes(currentUser.role) ? "flex" : "none";
+        adminBtn.style.display = ["admin", "taquilla", "promotor"].includes(currentUser.role) ? "flex" : "none";
+
+        adminBtn.innerHTML = currentUser.role === "promotor"
+            ? '<i class="fa-solid fa-bullhorn"></i> Mi panel'
+            : '<i class="fa-solid fa-lock"></i> Admin';
 
         $("bannerVerificar").classList.toggle("show", !currentUser.verificado);
 

@@ -440,3 +440,219 @@ const PLANOS = {
         luneta: { nombre:"Luneta", color:"#f5b400", texto:"#3a2a00", precio:90000,  tipo:"asiento" }
     }, [["vip", 4], ["platea", 4], ["luneta", 7]])
 };
+
+
+
+
+/* ========================================
+   PLANOS PROPIOS (editor visual)
+   Un promotor arma el plano de un lugar nuevo con bloques.
+   Aquí se convierten en sillas, palcos y zonas: el mismo
+   resultado en la web, la app y el servidor.
+
+   diseno = {
+     w, h,                                      tamaño del lienzo
+     zonas: [{ id, nombre, color, tipo, precio, precioPuesto }],
+     bloques: [
+       { id, tipo:"escenario" | "bloque", x, y, w, h, texto },
+       { id, tipo:"sillas", zona, x, y, filas, columnas },
+       { id, tipo:"palcos", zona, x, y, filas, columnas, forma:"circulo" | "cuadro", individuales:% },
+       { id, tipo:"general", zona, x, y, w, h, capacidad }
+     ]
+   }
+======================================== */
+
+// tamaño de cada celda en el lienzo
+const CELDA_PLANO = {
+    sillas: { w:24, h:24 },
+    circulo: { w:24, h:24 },
+    cuadro: { w:52, h:40 }
+};
+
+// ancho y alto que ocupa un bloque
+function medidaBloque(b){
+
+    if(b.tipo === "sillas" || b.tipo === "palcos"){
+
+        const c = b.tipo === "sillas" ? CELDA_PLANO.sillas : CELDA_PLANO[b.forma === "cuadro" ? "cuadro" : "circulo"];
+
+        return { w: b.columnas * c.w, h: b.filas * c.h };
+    }
+
+    return { w: b.w, h: b.h };
+}
+
+// Revisa que el diseño sea válido y razonable (también lo usa el servidor)
+function validarDiseno(d){
+
+    const n = v => Number.isFinite(v);
+
+    if(!d || !Array.isArray(d.zonas) || !Array.isArray(d.bloques)) throw new Error("El plano está vacío");
+
+    if(!(d.w >= 200 && d.w <= 3000 && d.h >= 200 && d.h <= 3000)) throw new Error("El tamaño del plano no es válido");
+
+    if(d.zonas.length > 40 || d.bloques.length > 300) throw new Error("El plano tiene demasiados elementos");
+
+    const zonas = {};
+
+    d.zonas.forEach(z => {
+
+        if(!z || !/^[\w-]{1,20}$/.test(z.id) || zonas[z.id]) throw new Error("Hay una localidad inválida");
+
+        if(!["asiento", "palco", "general"].includes(z.tipo)) throw new Error("Tipo de localidad inválido");
+
+        if(!String(z.nombre || "").trim()) throw new Error("Todas las localidades necesitan nombre");
+
+        if(!(n(z.precio) && z.precio > 0)) throw new Error(`Ponle precio a ${z.nombre}`);
+
+        if(z.tipo === "palco" && !(n(z.precioPuesto) && z.precioPuesto > 0)) throw new Error(`Ponle precio por puesto a ${z.nombre}`);
+
+        zonas[z.id] = z;
+    });
+
+    let total = 0;
+
+    const ids = new Set();
+
+    const tipoZona = { sillas:"asiento", palcos:"palco", general:"general" };
+
+    d.bloques.forEach(b => {
+
+        if(!b || !/^[\w-]{1,20}$/.test(b.id) || ids.has(b.id)) throw new Error("Hay un bloque inválido");
+
+        ids.add(b.id);
+
+        if(!["escenario", "bloque", "sillas", "palcos", "general"].includes(b.tipo)) throw new Error("Tipo de bloque inválido");
+
+        if(!(n(b.x) && n(b.y))) throw new Error("Hay un bloque sin posición");
+
+        if(tipoZona[b.tipo]){
+
+            const z = zonas[b.zona];
+
+            if(!z || z.tipo !== tipoZona[b.tipo]) throw new Error("Hay un bloque sin localidad");
+        }
+
+        if(b.tipo === "sillas" || b.tipo === "palcos"){
+
+            if(!(b.filas >= 1 && b.filas <= 60 && b.columnas >= 1 && b.columnas <= 80)) throw new Error("Filas o columnas fuera de rango");
+
+            total += b.filas * b.columnas;
+        }
+
+        if(b.tipo === "general" && !(b.capacidad >= 1 && b.capacidad <= 100000)) throw new Error("Ponle capacidad a la zona general");
+
+        if(["escenario", "bloque", "general"].includes(b.tipo) && !(b.w >= 10 && b.h >= 10)) throw new Error("Hay un bloque demasiado pequeño");
+    });
+
+    if(total > 30000) throw new Error("El plano tiene demasiadas ubicaciones");
+
+    if(!d.bloques.some(b => tipoZona[b.tipo])) throw new Error("El plano no tiene ubicaciones para vender");
+
+    return true;
+}
+
+function construirPlanoPropio(d){
+
+    const zonas = {};
+
+    d.zonas.forEach(z => {
+
+        zonas[z.id] = {
+            nombre: z.nombre,
+            color: z.color,
+            texto: textoSobreColor(z.color),
+            precio: z.precio,
+            tipo: z.tipo
+        };
+
+        if(z.tipo === "palco") zonas[z.id].precioPuesto = z.precioPuesto;
+    });
+
+    const piso = { id:"p1", nombre:"Plano", w:d.w, h:d.h, formas:[], asientos:[], palcos:[], generales:[] };
+
+    const numPalco = {};
+
+    d.bloques.forEach(b => {
+
+        if(b.tipo === "escenario" || b.tipo === "bloque"){
+
+            piso.formas.push({ t:"rect", x:b.x, y:b.y, w:b.w, h:b.h, rx:10, cls:b.tipo === "escenario" ? "escenario" : "bloque", texto:b.texto || "", vertical:b.h > b.w * 1.6 });
+
+            return;
+        }
+
+        const z = zonas[b.zona];
+
+        if(b.tipo === "general"){
+
+            piso.generales.push({ id:b.id, zona:b.zona, x:b.x, y:b.y, w:b.w, h:b.h, texto:(b.texto || z.nombre).toUpperCase(), capacidad:b.capacidad });
+
+            return;
+        }
+
+        // nombre de la localidad encima del bloque
+        const m = medidaBloque(b);
+
+        piso.formas.push({ t:"text", x:b.x + m.w / 2, y:b.y - 6, texto:z.nombre.toUpperCase(), cls:"miniText" });
+
+        if(b.tipo === "sillas"){
+
+            for(let f = 0; f < b.filas; f++){
+
+                for(let c = 0; c < b.columnas; c++){
+
+                    const fila = letraFila(f);
+
+                    piso.asientos.push({ id:`${b.id}-${fila}${c + 1}`, zona:b.zona, fila, num:c + 1, x:b.x + c * 24 + 12, y:b.y + f * 24 + 12 });
+                }
+            }
+
+            return;
+        }
+
+        // palcos de 10 personas: la primera fila del bloque siempre es de palcos completos
+        const circulo = b.forma !== "cuadro";
+
+        const celda = CELDA_PLANO[circulo ? "circulo" : "cuadro"];
+
+        const delBloque = [];
+
+        for(let f = 0; f < b.filas; f++){
+
+            for(let c = 0; c < b.columnas; c++){
+
+                numPalco[b.zona] = (numPalco[b.zona] || 0) + 1;
+
+                const num = numPalco[b.zona];
+
+                const palco = circulo
+                    ? { id:`${b.id}-P${num}`, zona:b.zona, num, x:b.x + c * 24 + 2, y:b.y + f * 24 + 2, w:20, h:20, circulo:true, capacidad:10, individual:false }
+                    : { id:`${b.id}-P${num}`, zona:b.zona, num, x:b.x + c * celda.w + 3, y:b.y + f * celda.h + 4, w:celda.w - 6, h:celda.h - 8, capacidad:10, individual:false };
+
+                piso.palcos.push(palco);
+
+                delBloque.push({ palco, f });
+            }
+        }
+
+        const cuantos = Math.round(delBloque.length * Math.min(100, Math.max(0, Number(b.individuales) || 0)) / 100);
+
+        delBloque.filter(x => x.f > 0)
+            .sort((a, c) => azarPlano(a.palco.id) - azarPlano(c.palco.id))
+            .slice(0, cuantos)
+            .forEach(x => x.palco.individual = true);
+    });
+
+    return { id:"propio", nombre:"Plano propio", zonas, pisos:[piso] };
+}
+
+// blanco o casi negro según qué se lea mejor sobre el color de la localidad
+function textoSobreColor(hex){
+
+    const v = parseInt(String(hex || "#888888").slice(1), 16);
+
+    const luz = (0.299 * (v >> 16) + 0.587 * ((v >> 8) & 255) + 0.114 * (v & 255)) / 255;
+
+    return luz > 0.62 ? "#1f2328" : "#fff";
+}

@@ -1,10 +1,10 @@
 {
-  "codigo": 10,
-  "nombre": "1.6.2",
+  "codigo": 11,
+  "nombre": "1.7.0",
   "notas": [
-    "Coliseo Las Malocas: cada puntico es un palco de 10 personas",
-    "Los palcos que se venden por puesto tienen un color más claro"
+    "Eventos de promotores con su propio plano",
+    "Los eventos nuevos empiezan sin boletas vendidas"
   ],
   "apk": "descargas/OnTicket.apk",
-  "publicada": "2026-11-14T05:59:22.267Z"
+  "publicada": "2026-11-14T06:37:54.113Z"
 }

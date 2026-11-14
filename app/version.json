@@ -1,8 +1,8 @@
 {
-  "codigo": 10,
-  "nombre": "1.6.2",
+  "codigo": 11,
+  "nombre": "1.7.0",
   "notas": [
-    "Coliseo Las Malocas: cada puntico es un palco de 10 personas",
-    "Los palcos que se venden por puesto tienen un color más claro"
+    "Eventos de promotores con su propio plano",
+    "Los eventos nuevos empiezan sin boletas vendidas"
   ]
 }

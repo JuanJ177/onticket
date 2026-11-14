@@ -11,19 +11,32 @@ const vm = require("vm");
 const codigo =
     fs.readFileSync(path.join(__dirname, "catalogo", "data.js"), "utf8") + "\n" +
     fs.readFileSync(path.join(__dirname, "catalogo", "planos.js"), "utf8") + "\n" +
-    ";({ CONFIG, LUGARES, EVENTOS, PLANOS, TIPO_ZONA })";
+    ";({ CONFIG, LUGARES, EVENTOS, PLANOS, TIPO_ZONA, construirPlanoPropio, validarDiseno })";
 
-const { CONFIG, LUGARES, EVENTOS, PLANOS, TIPO_ZONA } = vm.runInNewContext(codigo, {});
+const { CONFIG, LUGARES, EVENTOS, PLANOS, TIPO_ZONA, construirPlanoPropio, validarDiseno } = vm.runInNewContext(codigo, {});
 
 const ZONA_HORARIA = "America/Bogota";
 
-function planoDe(evento){
+function lugarDe(evento){
 
-    const lugar = LUGARES[evento.lugar];
+    const lugar = evento.lugarPropio || LUGARES[evento.lugar];
 
     if(!lugar) throw new Error("El evento tiene un lugar desconocido");
 
-    return PLANOS[lugar.plano];
+    return lugar;
+}
+
+// plano propio (editor) o uno de los planos de la plataforma
+function planoDe(evento){
+
+    if(evento.diseno){
+
+        validarDiseno(evento.diseno);
+
+        return construirPlanoPropio(evento.diseno);
+    }
+
+    return PLANOS[lugarDe(evento).plano];
 }
 
 function precioZona(evento, zonaId){
@@ -189,6 +202,6 @@ function digitoVerificacion(nit){
 
 module.exports = {
     CONFIG, LUGARES, EVENTOS, PLANOS, TIPO_ZONA,
-    planoDe, precioZona, precioPuesto, fechaReal, textoFecha,
+    lugarDe, planoDe, precioZona, precioPuesto, fechaReal, textoFecha,
     construirItems, calcularCostos, digitoVerificacion
 };

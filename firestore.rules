@@ -23,6 +23,18 @@ service cloud.firestore {
       return logueado() && rol() == 'admin';
     }
 
+    function esPromotor() {
+      return logueado() && rol() == 'promotor';
+    }
+
+    // lo que un promotor envía: queda pendiente de aprobación, a su nombre y sin ventas de demostración
+    function eventoDePromotor() {
+      return request.resource.data.promotorUid == request.auth.uid
+        && request.resource.data.estado == 'pendiente'
+        && request.resource.data.get('demo', false) == false
+        && request.resource.data.get('destacado', false) == false;
+    }
+
     function esStaff() {
       return logueado() && rol() in ['admin', 'taquilla'];
     }
@@ -34,10 +46,22 @@ service cloud.firestore {
       allow update: if logueado() && request.auth.uid == uid && request.resource.data.role == resource.data.role;
     }
 
-    // Eventos: todos los ven, solo el admin los crea o edita
+    // Eventos: todos los ven. El admin hace todo; el promotor solo crea los suyos
+    // y los edita o borra mientras no estén aprobados.
     match /eventos/{id} {
       allow read: if true;
       allow write: if esAdmin();
+      allow create: if esPromotor() && eventoDePromotor();
+      allow update: if esPromotor() && resource.data.promotorUid == request.auth.uid
+        && resource.data.estado in ['pendiente', 'rechazado'] && eventoDePromotor();
+      allow delete: if esPromotor() && resource.data.promotorUid == request.auth.uid
+        && resource.data.estado != 'aprobado';
+    }
+
+    // Imagen guía del plano (editor): solo su dueño y el admin
+    match /fondosPlano/{id} {
+      allow read, delete: if esAdmin() || (esPromotor() && resource.data.promotorUid == request.auth.uid);
+      allow create, update: if esAdmin() || (esPromotor() && request.resource.data.promotorUid == request.auth.uid);
     }
 
     // Compras: cada usuario ve las suyas (para ver sus boletas) y el admin todas.

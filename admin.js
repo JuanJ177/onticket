@@ -14,16 +14,25 @@ let comprasCargadas = false;
    NAVEGACIÓN DEL PANEL
 ======================================== */
 
+const esPromotor = () => !!currentUser && currentUser.role === "promotor";
+
 async function abrirAdminPanel(){
 
     mostrarPagina(adminPage);
 
-    const soloTaquilla = currentUser && currentUser.role === "taquilla";
+    const rol = currentUser && currentUser.role;
+
+    // taquilla: solo escanea. Promotor: solo sus eventos y sus ventas.
+    const permitidas = rol === "taquilla" ? ["taquilla"] : rol === "promotor" ? ["eventos", "ventas"] : null;
 
     document.querySelectorAll("#adminTabs button").forEach(b =>
-        b.style.display = soloTaquilla && b.dataset.tab !== "taquilla" ? "none" : "");
+        b.style.display = permitidas && !permitidas.includes(b.dataset.tab) ? "none" : "");
 
-    adminTab(soloTaquilla ? "taquilla" : adminTabActual);
+    $("adminTitulo").innerText = rol === "promotor" ? "Panel del promotor" : "Panel Administrativo";
+
+    const inicial = permitidas ? (permitidas.includes(adminTabActual) ? adminTabActual : permitidas[0]) : adminTabActual;
+
+    adminTab(inicial);
 }
 
 function adminTab(tab){
@@ -81,6 +90,24 @@ async function cargarVentasAdmin(){
 
     $("adminTableBody").innerHTML = `<tr><td colspan="8">Cargando...</td></tr>`;
 
+    if(esPromotor()){
+
+        try{
+
+            renderVentasPromotor(await DB.ventasPromotor());
+
+        }catch(e){
+
+            $("adminTableBody").innerHTML = `<tr><td colspan="8">${esc(e.message)}</td></tr>`;
+        }
+
+        return;
+    }
+
+    $("ventasCabecera").innerHTML = `
+        <th>Usuario</th><th>Evento</th><th>Boletas</th><th>Servicio + IVA</th>
+        <th>Total</th><th>Ingresos</th><th>Factura</th><th>Código</th>`;
+
     try{
 
         renderAdminCompras(await cargarComprasAdmin(true));
@@ -133,6 +160,39 @@ function renderAdminCompras(compras){
         <div><small>Facturas electrónicas</small><b>${facturas}</b></div>`;
 }
 
+// Lo que ve el promotor: sus eventos y sus ventas (sin datos personales de los compradores)
+function renderVentasPromotor(r){
+
+    const totales = r.eventos.reduce((s, e) => ({
+        boleteria: s.boleteria + e.boleteria,
+        compras: s.compras + e.compras,
+        personas: s.personas + e.personas,
+        ingresaron: s.ingresaron + e.ingresaron
+    }), { boleteria: 0, compras: 0, personas: 0, ingresaron: 0 });
+
+    $("adminStats").innerHTML = `
+        <div><small>Recaudo en boletería</small><b>${fmt(totales.boleteria)}</b></div>
+        <div><small>Compras</small><b>${totales.compras}</b></div>
+        <div><small>Asistentes</small><b>${totales.personas}</b></div>
+        <div><small>Ya ingresaron</small><b>${totales.ingresaron} / ${totales.personas}</b></div>
+        <div><small>Mis eventos</small><b>${r.eventos.length}</b></div>`;
+
+    $("ventasCabecera").innerHTML = `
+        <th>Evento</th><th>Fecha de compra</th><th>Ubicaciones</th><th>Personas</th>
+        <th>Boletería</th><th>Ingresos</th><th colspan="2">Código</th>`;
+
+    $("adminTableBody").innerHTML = r.compras.map(c => `
+        <tr class="adminRow">
+            <td>${esc(c.evento)}</td>
+            <td>${c.fechaCompra ? new Date(c.fechaCompra).toLocaleString("es-CO") : "—"}</td>
+            <td>${c.ubicaciones.map(esc).join("<br>")}</td>
+            <td>${c.personas}</td>
+            <td><b>${fmt(c.boleteria)}</b></td>
+            <td><span class="ingresoTag ${c.ingresos >= c.personas ? "completo" : ""}">${c.ingresos} / ${c.personas}</span></td>
+            <td class="mono" colspan="2">${esc(c.codigo)}</td>
+        </tr>`).join("") || `<tr><td colspan="8">${r.eventos.length ? "Aún no hay ventas en tus eventos." : "Aún no tienes eventos. Créalos en la pestaña Eventos."}</td></tr>`;
+}
+
 function buscarCompraAdmin(){
 
     const input = $("searchCompra").value.toLowerCase();
@@ -165,7 +225,11 @@ async function asegurarEventosEnNube(){
 
     const enNube = await DB.cargarEventos();
 
-    if(!enNube) await DB.publicarEventos(EVENTOS_EJEMPLO.map(eventoCrudo));
+    if(enNube) return;
+
+    if(esPromotor()) throw new Error("El administrador aún no ha publicado la cartelera. Intenta más tarde.");
+
+    await DB.publicarEventos(EVENTOS_EJEMPLO.map(eventoCrudo));
 }
 
 async function renderEventosAdmin(){
@@ -178,33 +242,60 @@ async function renderEventosAdmin(){
         ? `<i class="fa-solid fa-cloud"></i> ${EVENTOS.length} eventos ${DB.modo === "firebase" ? "en la nube: los cambios se ven al instante en la web y en la app" : "guardados en este navegador (modo local)"}.`
         : `<i class="fa-solid fa-circle-info"></i> Se están mostrando los eventos de ejemplo. Al guardar tu primer cambio se publican todos ${DB.modo === "firebase" ? "en la nube" : ""}.`;
 
-    $("eventosAdmin").innerHTML = EVENTOS.map(ev => {
+    const promotor = esPromotor();
+
+    if(promotor){
+
+        $("eventosAdminInfo").innerHTML = `<i class="fa-solid fa-bullhorn"></i> Crea tu evento con su afiche y su plano. OnTicket lo revisa y, al aprobarlo, sale a la venta.`;
+    }
+
+    // el promotor solo ve los suyos; el admin ve primero los que esperan aprobación
+    const lista = (promotor ? EVENTOS.filter(e => e.promotorUid === currentUser.uid) : [...EVENTOS])
+        .sort((a, b) => (b.estado === "pendiente") - (a.estado === "pendiente"));
+
+    const ESTADOS = {
+        pendiente: '<span class="badge amarillo"><i class="fa-solid fa-hourglass-half"></i> Por aprobar</span>',
+        rechazado: '<span class="badge rojo"><i class="fa-solid fa-circle-xmark"></i> Rechazado</span>'
+    };
+
+    $("eventosAdmin").innerHTML = lista.map(ev => {
 
         const lugar = lugarDe(ev);
 
         const oculto = ev.visible === false;
 
+        const estado = ev.estado || "aprobado";
+
+        const editable = !promotor || estado !== "aprobado";
+
         return `
-        <article class="eventoAdmin ${oculto ? "oculto" : ""}">
+        <article class="eventoAdmin ${(oculto && estado === "aprobado") || estado === "rechazado" ? "oculto" : ""} ${estado === "pendiente" && !promotor ? "porAprobar" : ""}">
             <img src="${ev.imagen}" alt="">
             <div class="eventoAdminInfo">
                 <div class="badges">
-                    ${oculto ? '<span class="badge gris"><i class="fa-solid fa-eye-slash"></i> Oculto</span>' : '<span class="badge verde"><i class="fa-solid fa-eye"></i> Publicado</span>'}
+                    ${ESTADOS[estado] || (oculto ? '<span class="badge gris"><i class="fa-solid fa-eye-slash"></i> Oculto</span>' : '<span class="badge verde"><i class="fa-solid fa-eye"></i> Publicado</span>')}
                     ${ev.destacado ? '<span class="badge naranja"><i class="fa-solid fa-star"></i> Destacado</span>' : ""}
+                    ${ev.diseno ? '<span class="badge gris"><i class="fa-solid fa-pen-ruler"></i> Plano propio</span>' : ""}
                 </div>
-                <b>${ev.artista}</b>
-                <small>${ev.titulo}</small>
+                <b>${esc(ev.artista)}</b>
+                <small>${esc(ev.titulo)}</small>
                 <small><i class="fa-regular fa-calendar"></i> ${ev.fecha} · ${ev.hora}</small>
-                <small><i class="fa-solid fa-location-dot"></i> ${lugar.nombre}, ${lugar.ciudad}</small>
+                <small><i class="fa-solid fa-location-dot"></i> ${esc(lugar.nombre)}, ${esc(lugar.ciudad)}</small>
+                ${ev.promotorNombre && !promotor ? `<small><i class="fa-solid fa-bullhorn"></i> Promotor: ${esc(ev.promotorNombre)}</small>` : ""}
+                ${estado === "rechazado" && ev.comentarioRevision ? `<small class="comentarioRevision"><i class="fa-solid fa-comment"></i> ${esc(ev.comentarioRevision)}</small>` : ""}
             </div>
             <div class="eventoAdminBtns">
-                <button class="ghostBtn" onclick="editarEvento('${ev.id}')"><i class="fa-solid fa-pen"></i> Editar</button>
-                <button class="ghostBtn" onclick="alternarVisible('${ev.id}')"><i class="fa-solid ${oculto ? "fa-eye" : "fa-eye-slash"}"></i> ${oculto ? "Mostrar" : "Ocultar"}</button>
-                <button class="ghostBtn danger" onclick="eliminarEventoAdmin('${ev.id}')"><i class="fa-regular fa-trash-can"></i></button>
+                ${!promotor && estado === "pendiente" ? `
+                <button class="primaryBtn" onclick="aprobarEvento('${ev.id}')"><i class="fa-solid fa-check"></i> Aprobar</button>
+                <button class="ghostBtn danger" onclick="rechazarEvento('${ev.id}')"><i class="fa-solid fa-xmark"></i> Rechazar</button>` : ""}
+                ${editable ? `<button class="ghostBtn" onclick="editarEvento('${ev.id}')"><i class="fa-solid fa-pen"></i> ${promotor ? "Editar" : estado === "pendiente" ? "Revisar" : "Editar"}</button>` : ""}
+                ${!promotor && estado === "aprobado" ? `<button class="ghostBtn" onclick="alternarVisible('${ev.id}')"><i class="fa-solid ${oculto ? "fa-eye" : "fa-eye-slash"}"></i> ${oculto ? "Mostrar" : "Ocultar"}</button>` : ""}
+                ${promotor && estado === "aprobado" ? `<button class="ghostBtn" onclick="abrirEvento('${ev.id}')"><i class="fa-solid fa-arrow-up-right-from-square"></i> Ver en la página</button>` : ""}
+                ${editable ? `<button class="ghostBtn danger" onclick="eliminarEventoAdmin('${ev.id}')"><i class="fa-regular fa-trash-can"></i></button>` : ""}
             </div>
         </article>`;
 
-    }).join("");
+    }).join("") || `<p class="adminSubtitle">Aún no tienes eventos. Toca <b>Nuevo evento</b> para crear el primero.</p>`;
 }
 
 function editarEvento(id){
@@ -216,14 +307,35 @@ function editarEvento(id){
     $("eventoModalTitulo").innerText = ev ? `Editar: ${ev.artista}` : "Nuevo evento";
 
     $("evLugar").innerHTML = Object.entries(LUGARES).map(([k, l]) =>
-        `<option value="${k}">${l.nombre} · ${l.ciudad}</option>`).join("");
+        `<option value="${k}">${l.nombre} · ${l.ciudad}</option>`).join("") +
+        `<option value="nuevo">➕ Lugar nuevo (con plano propio)</option>`;
 
     const [fecha, hora] = (ev && ev.fechaISO ? ev.fechaISO : "T20:00").split("T");
 
     $("evArtista").value = ev ? ev.artista : "";
     $("evTitulo").value = ev ? ev.titulo : "";
     $("evCategoria").value = ev ? ev.categoria : "Conciertos";
-    $("evLugar").value = ev ? ev.lugar : Object.keys(LUGARES)[0];
+    $("evLugar").value = ev ? (ev.diseno ? "nuevo" : ev.lugar) : Object.keys(LUGARES)[0];
+
+    const lp = (ev && ev.lugarPropio) || {};
+
+    $("evLugarNombre").value = lp.nombre || "";
+    $("evLugarDireccion").value = lp.direccion || "";
+    $("evLugarCiudad").value = lp.ciudad || "";
+    $("evLugarDepto").value = lp.departamento || "";
+
+    disenoEvento = ev && ev.diseno ? JSON.parse(JSON.stringify(ev.diseno)) : null;
+
+    fondoPlano = null;
+
+    if(ev && ev.diseno) DB.cargarFondoPlano(ev.id).then(f => fondoPlano = f);
+
+    // el promotor no decide si sale destacado ni si se publica: eso lo aprueba OnTicket
+    document.querySelectorAll(".soloAdmin").forEach(el => el.style.display = esPromotor() ? "none" : "");
+
+    $("btnGuardarEvento").innerHTML = esPromotor()
+        ? '<i class="fa-solid fa-paper-plane"></i> Enviar a aprobación'
+        : '<i class="fa-solid fa-floppy-disk"></i> Guardar evento';
     $("evFecha").value = fecha;
     $("evHora").value = (hora || "20:00").slice(0, 5);
     $("evDescripcion").value = ev ? ev.descripcion || "" : "";
@@ -300,6 +412,27 @@ function renderPreciosEditor(){
 
     const lugar = $("evLugar").value;
 
+    $("lugarNuevoBox").style.display = lugar === "nuevo" ? "" : "none";
+
+    if(lugar === "nuevo"){
+
+        const r = disenoEvento ? resumenDiseno(disenoEvento) : null;
+
+        $("preciosEditor").innerHTML = `
+            <div class="planoPropioBox">
+                <div>
+                    <b><i class="fa-solid fa-pen-ruler"></i> ${disenoEvento ? "Plano propio listo" : "Este lugar necesita su plano"}</b>
+                    <small>${r
+                        ? `${disenoEvento.zonas.length} localidades · ${r.personas.toLocaleString("es-CO")} personas · ${r.palcos} palcos (${r.individuales} individuales)`
+                        : "Sube la imagen del plano real como guía y arma encima las sillas, palcos y zonas. Los precios se ponen en cada localidad."}</small>
+                    ${disenoEvento ? `<div class="zonasResumen">${disenoEvento.zonas.map(z => `<span><i style="background:${z.color}"></i>${esc(z.nombre)} · ${fmt(z.precio)}${z.tipo === "palco" ? ` (puesto ${fmt(z.precioPuesto)})` : ""}</span>`).join("")}</div>` : ""}
+                </div>
+                <button class="primaryBtn" onclick="abrirEditorPlano()"><i class="fa-solid fa-pen-ruler"></i> ${disenoEvento ? "Editar plano" : "Diseñar plano"}</button>
+            </div>`;
+
+        return;
+    }
+
     const plano = PLANOS[LUGARES[lugar].plano];
 
     const precios = (eventoEditando && eventoEditando.lugar === lugar && eventoEditando.precios) || {};
@@ -340,18 +473,53 @@ async function guardarEventoEditor(){
 
     const lugar = $("evLugar").value;
 
-    const plano = PLANOS[LUGARES[lugar].plano];
+    const nuevo = lugar === "nuevo";
+
+    let lugarPropio = null;
+
+    if(nuevo){
+
+        lugarPropio = {
+            nombre: $("evLugarNombre").value.trim(),
+            direccion: $("evLugarDireccion").value.trim(),
+            ciudad: $("evLugarCiudad").value.trim(),
+            departamento: $("evLugarDepto").value.trim(),
+            plano: "propio"
+        };
+
+        if(!lugarPropio.nombre || !lugarPropio.ciudad){
+
+            toast("Escribe el nombre del lugar y la ciudad", "fa-triangle-exclamation");
+
+            return;
+        }
+
+        lugarPropio.mapa = [lugarPropio.nombre, lugarPropio.direccion, lugarPropio.ciudad, lugarPropio.departamento].filter(Boolean).join(", ");
+
+        try{
+
+            validarDiseno(disenoEvento);
+
+        }catch(e){
+
+            toast(disenoEvento ? esc(e.message) : "Diseña el plano del lugar antes de guardar", "fa-triangle-exclamation");
+
+            return;
+        }
+    }
+
+    const plano = nuevo ? null : PLANOS[LUGARES[lugar].plano];
 
     const precios = {}, preciosPuesto = {};
 
-    document.querySelectorAll("[data-precio]").forEach(i => {
+    if(!nuevo) document.querySelectorAll("[data-precio]").forEach(i => {
 
         const v = Number(i.value);
 
         if(v && v !== plano.zonas[i.dataset.precio].precio) precios[i.dataset.precio] = v;
     });
 
-    document.querySelectorAll("[data-puesto]").forEach(i => {
+    if(!nuevo) document.querySelectorAll("[data-puesto]").forEach(i => {
 
         const v = Number(i.value);
 
@@ -364,7 +532,7 @@ async function guardarEventoEditor(){
         artista,
         titulo: $("evTitulo").value.trim(),
         categoria: $("evCategoria").value,
-        lugar,
+        lugar: nuevo ? "propio" : lugar,
         fechaISO: `${fecha}T${$("evHora").value || "20:00"}`,
         descripcion: $("evDescripcion").value.trim(),
         video: $("evVideo").value.trim() || null,
@@ -374,6 +542,40 @@ async function guardarEventoEditor(){
         precios,
         preciosPuesto
     };
+
+    if(nuevo){
+
+        evento.lugarPropio = lugarPropio;
+
+        evento.diseno = disenoEvento;
+
+    }else{
+
+        delete evento.lugarPropio;
+
+        delete evento.diseno;
+    }
+
+    // un evento nuevo arranca sin ventas de demostración
+    if(!eventoEditando) evento.demo = false;
+
+    // lo que crea un promotor queda pendiente hasta que el administrador lo apruebe
+    if(esPromotor()){
+
+        evento.promotorUid = currentUser.uid;
+
+        evento.promotorNombre = currentUser.name;
+
+        evento.estado = "pendiente";
+
+        evento.destacado = false;
+
+        evento.visible = true;
+
+        evento.demo = false;
+
+        delete evento.comentarioRevision;
+    }
 
     const btn = $("btnGuardarEvento");
 
@@ -387,11 +589,13 @@ async function guardarEventoEditor(){
 
         await DB.guardarEvento(evento);
 
+        if(nuevo && fondoPlano) await DB.guardarFondoPlano(evento.id, fondoPlano, evento.promotorUid).catch(() => {});
+
         await refrescarEventos();
 
         cerrarModal("eventoModal");
 
-        toast(`Evento "${esc(artista)}" guardado`);
+        toast(esPromotor() ? `"${esc(artista)}" quedó enviado. OnTicket lo revisará pronto.` : `Evento "${esc(artista)}" guardado`);
 
     }catch(e){
 
@@ -401,7 +605,61 @@ async function guardarEventoEditor(){
 
         btn.disabled = false;
 
-        btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar evento';
+        btn.innerHTML = esPromotor()
+            ? '<i class="fa-solid fa-paper-plane"></i> Enviar a aprobación'
+            : '<i class="fa-solid fa-floppy-disk"></i> Guardar evento';
+    }
+}
+
+/* ----- aprobación de eventos de promotores (solo admin) ----- */
+
+async function aprobarEvento(id){
+
+    const ev = eventoCrudo(getEvento(id));
+
+    ev.estado = "aprobado";
+
+    ev.visible = true;
+
+    delete ev.comentarioRevision;
+
+    try{
+
+        await DB.guardarEvento(ev);
+
+        await refrescarEventos();
+
+        toast(`"${esc(ev.artista)}" aprobado: ya está a la venta`);
+
+    }catch(e){
+
+        toast(esc(e.message), "fa-triangle-exclamation");
+    }
+}
+
+async function rechazarEvento(id){
+
+    const comentario = prompt("¿Qué debe corregir el promotor? (lo verá en su panel)");
+
+    if(comentario === null) return;
+
+    const ev = eventoCrudo(getEvento(id));
+
+    ev.estado = "rechazado";
+
+    ev.comentarioRevision = comentario.trim() || "Revisa los datos del evento.";
+
+    try{
+
+        await DB.guardarEvento(ev);
+
+        await refrescarEventos();
+
+        toast("Evento devuelto al promotor");
+
+    }catch(e){
+
+        toast(esc(e.message), "fa-triangle-exclamation");
     }
 }
 

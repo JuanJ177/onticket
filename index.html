@@ -42,9 +42,9 @@
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
     >
 
-    <link rel="stylesheet" href="style.css?v=12">
+    <link rel="stylesheet" href="style.css?v=13">
 
-    <link rel="stylesheet" href="planos.css?v=12">
+    <link rel="stylesheet" href="planos.css?v=13">
 
 </head>
 
@@ -540,7 +540,7 @@
 
                 <span class="sectionKicker">OnTicket</span>
 
-                <h1>Panel Administrativo</h1>
+                <h1 id="adminTitulo">Panel Administrativo</h1>
 
             </div>
 
@@ -577,7 +577,7 @@
 
                     <thead>
 
-                        <tr>
+                        <tr id="ventasCabecera">
                             <th>Usuario</th>
                             <th>Evento</th>
                             <th>Boletas</th>
@@ -981,7 +981,7 @@
                     <input type="file" accept="image/*" id="evImagenArchivo" onchange="cargarAfiche(this)" hidden>
                 </label>
 
-                <small class="ayuda">JPG o PNG. Se optimiza automáticamente.</small>
+                <small class="ayuda">JPG o PNG, ideal vertical (4:5) o cuadrado. Se optimiza automáticamente.</small>
 
             </div>
 
@@ -1008,6 +1008,21 @@
                     <select id="evLugar" onchange="renderPreciosEditor()"></select>
                 </label>
 
+                <div class="full lugarNuevo" id="lugarNuevoBox" style="display:none;">
+                    <label>Nombre del lugar
+                        <input id="evLugarNombre" placeholder="Ej: Coliseo Álamos">
+                    </label>
+                    <label>Dirección
+                        <input id="evLugarDireccion" placeholder="Ej: Calle 15 #40-20">
+                    </label>
+                    <label>Ciudad
+                        <input id="evLugarCiudad" placeholder="Ej: Villavicencio">
+                    </label>
+                    <label>Departamento
+                        <input id="evLugarDepto" placeholder="Ej: Meta">
+                    </label>
+                </div>
+
                 <label>Fecha
                     <input type="date" id="evFecha">
                 </label>
@@ -1024,11 +1039,11 @@
                     <input id="evVideo" placeholder="https://...">
                 </label>
 
-                <label class="check">
+                <label class="check soloAdmin">
                     <input type="checkbox" id="evDestacado"> Mostrar en el banner de destacados
                 </label>
 
-                <label class="check">
+                <label class="check soloAdmin">
                     <input type="checkbox" id="evVisible" checked> Visible para el público
                 </label>
 
@@ -1056,6 +1071,97 @@
 
 </div>
 
+
+
+
+<!-- ========================================
+     EDITOR DE PLANOS
+======================================== -->
+
+<div class="modal" id="editorPlanoModal">
+
+    <div class="modalBox editorPlanoBox">
+
+        <span class="closeModal" onclick="cerrarModal('editorPlanoModal')">✖</span>
+
+        <h2><i class="fa-solid fa-pen-ruler"></i> Editor de plano</h2>
+
+        <p class="modalSub">Sube el plano real como guía y arma encima las ubicaciones. Arrastra los bloques para moverlos y usa su esquina para cambiar el tamaño.</p>
+
+        <div class="editorPlano">
+
+            <aside class="editorPanel">
+
+                <section>
+                    <h4>1. Imagen guía</h4>
+                    <div class="dosCampos">
+                        <label class="ghostBtn subirFondo">
+                            <i class="fa-solid fa-image"></i> Subir plano
+                            <input type="file" accept="image/*" onchange="cargarFondoPlano(this)" hidden>
+                        </label>
+                        <button class="ghostBtn" onclick="quitarFondoPlano()">Quitar</button>
+                    </div>
+                    <label>Transparencia de la guía
+                        <input type="range" id="opacidadFondo" min="0.1" max="1" step="0.05" oninput="cambiarOpacidadFondo(this.value)">
+                    </label>
+                    <div class="dosCampos">
+                        <label>Ancho<input type="number" id="planoAncho" min="300" max="3000" step="20" onchange="cambiarTamanoLienzo()"></label>
+                        <label>Alto<input type="number" id="planoAlto" min="300" max="3000" step="20" onchange="cambiarTamanoLienzo()"></label>
+                    </div>
+                </section>
+
+                <section>
+                    <h4>2. Agregar</h4>
+                    <div class="botonesAgregar">
+                        <button onclick="agregarBloque('escenario')"><i class="fa-solid fa-masks-theater"></i> Escenario</button>
+                        <button onclick="agregarBloque('sillas')"><i class="fa-solid fa-chair"></i> Sillas</button>
+                        <button onclick="agregarBloque('palcos')"><i class="fa-solid fa-people-group"></i> Palcos de 10</button>
+                        <button onclick="agregarBloque('general')"><i class="fa-solid fa-users"></i> Zona general</button>
+                        <button onclick="agregarBloque('bloque')"><i class="fa-solid fa-font"></i> Texto / baños</button>
+                    </div>
+                </section>
+
+                <section>
+                    <h4>3. Localidades y precios</h4>
+                    <div id="zonasPlano"></div>
+                    <div class="dosCampos agregarZona">
+                        <select id="tipoZonaNueva">
+                            <option value="asiento">Sillas numeradas</option>
+                            <option value="palco">Palcos de 10</option>
+                            <option value="general">General</option>
+                        </select>
+                        <button class="ghostBtn" onclick="agregarZona()"><i class="fa-solid fa-plus"></i> Localidad</button>
+                    </div>
+                </section>
+
+                <section>
+                    <h4>Bloque seleccionado</h4>
+                    <div id="propiedadesBloque"></div>
+                </section>
+
+            </aside>
+
+            <div class="editorLienzo">
+
+                <svg id="lienzoPlano" class="plano"></svg>
+
+                <div class="resumenPlano" id="resumenPlano"></div>
+
+            </div>
+
+        </div>
+
+        <div class="checkoutFooter">
+
+            <button class="ghostBtn" onclick="cerrarModal('editorPlanoModal')">Cancelar</button>
+
+            <button class="primaryBtn" onclick="guardarEditorPlano()"><i class="fa-solid fa-check"></i> Usar este plano</button>
+
+        </div>
+
+    </div>
+
+</div>
 
 
 
@@ -1409,13 +1515,14 @@
 <!-- Lector de QR para la taquilla -->
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 
-<script src="firebase-config.js?v=12"></script>
-<script src="data.js?v=12"></script>
-<script src="planos.js?v=12"></script>
-<script src="core.js?v=12"></script>
-<script src="db.js?v=12"></script>
-<script src="script.js?v=12"></script>
-<script src="admin.js?v=12"></script>
+<script src="firebase-config.js?v=13"></script>
+<script src="data.js?v=13"></script>
+<script src="planos.js?v=13"></script>
+<script src="core.js?v=13"></script>
+<script src="db.js?v=13"></script>
+<script src="script.js?v=13"></script>
+<script src="editor-plano.js?v=13"></script>
+<script src="admin.js?v=13"></script>
 
 </body>
 </html>
