@@ -1,10 +1,11 @@
 {
-  "codigo": 8,
-  "nombre": "1.6.0",
+  "codigo": 9,
+  "nombre": "1.6.1",
   "notas": [
-    "Nuevo: paga con Wompi (Nequi, PSE, tarjetas, Daviplata y Bancolombia)",
-    "Tu boleta aparece sola cuando Wompi confirma el pago"
+    "Coliseo Las Malocas: ahora con palcos para 10 personas",
+    "Los palcos que se venden por puesto tienen un color más claro",
+    "Nuevo afiche de Hassam"
   ],
   "apk": "descargas/OnTicket.apk",
-  "publicada": "2026-11-14T05:17:24.166Z"
+  "publicada": "2026-11-14T05:47:50.165Z"
 }

@@ -1242,7 +1242,7 @@ img{
 
 .lgSel{ background:white; border:3px solid var(--brand); }
 .lgSold{ background:#2c2e36; border:1px solid #444; }
-.lgInd{ background:var(--ind); border-radius:4px; }
+.lgInd{ background:#a5d7f6; border:2px dashed #1e9be9; border-radius:4px; }
 
 .carritoBar{
 

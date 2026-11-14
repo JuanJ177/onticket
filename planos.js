@@ -23,43 +23,62 @@ function letraFila(i){
 
 /* ========================================
    COLISEO LAS MALOCAS
-   Basado en el plano real (Marco Antonio Solís 2025)
+   Palcos de 10 personas por localidad (la Gradería es general).
+   La primera fila de cada localidad es de palcos completos; de ahí
+   para atrás, cerca del 20 % de los palcos se vende por puesto
+   (palcos individuales), repartidos al azar.
 ======================================== */
+
+// azar estable (el mismo resultado en la web, la app y el servidor)
+function azarPlano(texto){
+
+    let h = 2166136261;
+
+    for(let i = 0; i < texto.length; i++){
+
+        h ^= texto.charCodeAt(i);
+
+        h = Math.imul(h, 16777619);
+    }
+
+    return ((h >>> 0) % 10000) / 10000;
+}
 
 function construirMalocas(){
 
-    const P = 24;          // separación entre sillas
-    const COLS = 19;       // sillas por fila
+    const P = 24;          // ancho de una columna del plano
+    const COLS = 19;       // columnas de la cancha
     const X0 = 78;         // margen para las etiquetas laterales
     const W = X0 * 2 + COLS * P;
+    const PH = 30;         // alto de un palco
+    const FILA = 38;       // distancia entre filas de palcos
 
+    // precio = palco completo (10 personas); precioPuesto = un puesto en palco individual
     const zonas = {
-        ar:       { nombre:"Alfombra Roja", color:"#e53935", texto:"#fff", precio:650000, tipo:"asiento" },
-        diamante: { nombre:"Diamante",      color:"#1e9be9", texto:"#fff", precio:480000, tipo:"asiento" },
-        oro:      { nombre:"Oro",           color:"#f5b400", texto:"#3a2a00", precio:380000, tipo:"asiento" },
-        plata:    { nombre:"Plata",         color:"#a3a9b3", texto:"#1f2328", precio:290000, tipo:"asiento" },
-        platino:  { nombre:"Platino",       color:"#f28b82", texto:"#3b0b07", precio:240000, tipo:"asiento" },
-        bronce:   { nombre:"Bronce",        color:"#8bc34a", texto:"#1b3300", precio:190000, tipo:"asiento" },
-        vip:      { nombre:"VIP",           color:"#d63ee8", texto:"#fff", precio:150000, tipo:"asiento" },
-        graderia: { nombre:"Gradería",      color:"#4b4ab5", texto:"#fff", precio:90000,  tipo:"general", capacidad:800 }
+        ar:       { nombre:"Alfombra Roja", color:"#e53935", texto:"#fff",    precio:6000000, precioPuesto:650000, tipo:"palco" },
+        diamante: { nombre:"Diamante",      color:"#1e9be9", texto:"#fff",    precio:4500000, precioPuesto:480000, tipo:"palco" },
+        oro:      { nombre:"Oro",           color:"#f5b400", texto:"#3a2a00", precio:3500000, precioPuesto:380000, tipo:"palco" },
+        plata:    { nombre:"Plata",         color:"#a3a9b3", texto:"#1f2328", precio:2700000, precioPuesto:290000, tipo:"palco" },
+        platino:  { nombre:"Platino",       color:"#f28b82", texto:"#3b0b07", precio:2200000, precioPuesto:240000, tipo:"palco" },
+        bronce:   { nombre:"Bronce",        color:"#8bc34a", texto:"#1b3300", precio:1750000, precioPuesto:190000, tipo:"palco" },
+        vip:      { nombre:"VIP",           color:"#d63ee8", texto:"#fff",    precio:1400000, precioPuesto:150000, tipo:"palco" },
+        graderia: { nombre:"Gradería",      color:"#4b4ab5", texto:"#fff",    precio:90000,  tipo:"general", capacidad:800 }
     };
 
-    // segmentos de cada fila: número = sillas, g = pasillo, f = espacio del FOH
-    const R18  = [9, {g:1}, 9];
-    const F5   = [7, {f:5}, 7];
-    const F3   = [8, {f:3}, 8];
-    const F1   = [9, {f:1}, 9];
-    const FULL = [19];
-
+    // C = fila completa (4 palcos | pasillo | 4 palcos)
+    // F = fila con la consola de sonido (FOH) en el centro (3 palcos | FOH | 3 palcos)
     const secciones = [
-        ["ar",       [R18, R18, R18, R18]],
-        ["diamante", [R18, R18, R18, R18, F5, F5]],
-        ["oro",      [F5, F5, F3, F3, F1, FULL]],
-        ["plata",    [FULL, FULL, FULL]],
-        ["platino",  [FULL, FULL, FULL]],
-        ["bronce",   [FULL, FULL, FULL, FULL]],
-        ["vip",      [FULL, FULL, FULL, FULL]]
+        ["ar",       "CC"],
+        ["diamante", "CCF"],
+        ["oro",      "FFC"],
+        ["plata",    "CC"],
+        ["platino",  "CC"],
+        ["bronce",   "CCC"],
+        ["vip",      "CCC"]
     ];
+
+    // [columna donde empieza, cantidad de palcos]; cada palco ocupa 2 columnas
+    const GRUPOS = { C: [[0, 4], [11, 4]], F: [[0, 3], [13, 3]] };
 
     const piso = { id:"p1", nombre:"Coliseo", w:W, h:0, formas:[], asientos:[], palcos:[], generales:[] };
 
@@ -67,97 +86,72 @@ function construirMalocas(){
 
     piso.formas.push({ t:"rect", x:X0, y:80, w:COLS * P, h:46, rx:8, cls:"bloque", texto:"INVITADOS" });
 
-    let y = 152;
+    let y = 146;
 
-    const filasInfo = [];
+    let foh = null;
 
     secciones.forEach(([zona, filas]) => {
 
         const yInicio = y;
 
+        const delaZona = [];
+
         let num = 1;
 
-        filas.forEach((segmentos, filaIdx) => {
+        [...filas].forEach((tipo, fila) => {
 
-            let col = 0;
+            GRUPOS[tipo].forEach(([col0, cantidad]) => {
 
-            const foh = [];
+                for(let k = 0; k < cantidad; k++){
 
-            segmentos.forEach(seg => {
+                    const palco = {
+                        id: `${zona}-P${num}`,
+                        zona, num,
+                        x: X0 + (col0 + k * 2) * P + 3,
+                        y, w: 2 * P - 6, h: PH,
+                        capacidad: 10,
+                        individual: false
+                    };
 
-                if(typeof seg === "number"){
+                    piso.palcos.push(palco);
 
-                    for(let k = 0; k < seg; k++){
+                    delaZona.push({ palco, fila });
 
-                        piso.asientos.push({
-                            id: `${zona}-${num}`,
-                            zona,
-                            fila: letraFila(filaIdx),
-                            num,
-                            x: X0 + col * P + P / 2,
-                            y
-                        });
-
-                        num++;
-                        col++;
-                    }
-
-                }else if(seg.g){
-
-                    col += seg.g;
-
-                }else if(seg.f){
-
-                    foh.push({ x: X0 + col * P, w: seg.f * P });
-
-                    col += seg.f;
+                    num++;
                 }
             });
 
-            filasInfo.push({ y, foh });
+            if(tipo === "F"){
 
-            y += P;
+                foh = foh || { y1: y };
+
+                foh.y2 = y + PH;
+            }
+
+            y += FILA;
         });
 
-        const alto = (y - P) - yInicio + P - 2;
+        // palcos individuales: cerca del 20 %, nunca en la primera fila
+        const candidatos = delaZona.filter(d => d.fila > 0).sort((a, b) => azarPlano(a.palco.id) - azarPlano(b.palco.id));
+
+        candidatos.slice(0, Math.round(delaZona.length * 0.2)).forEach(d => d.palco.individual = true);
+
+        const alto = (y - FILA + PH) - yInicio + 8;
 
         const z = zonas[zona];
 
         // etiquetas laterales (como en el plano real)
-        piso.formas.push({ t:"pill", x:8, y:yInicio - P / 2 + 1, w:54, h:alto, zona, texto:z.nombre.toUpperCase() });
+        piso.formas.push({ t:"pill", x:8, y:yInicio - 4, w:54, h:alto, zona, texto:z.nombre.toUpperCase() });
 
-        piso.formas.push({ t:"pill", x:W - 62, y:yInicio - P / 2 + 1, w:54, h:alto, zona, texto:z.nombre.toUpperCase() });
+        piso.formas.push({ t:"pill", x:W - 62, y:yInicio - 4, w:54, h:alto, zona, texto:z.nombre.toUpperCase() });
 
         y += 12;
     });
 
+    // consola de sonido (FOH) en el centro de la cancha
+    piso.formas.push({ t:"rect", x:X0 + 6 * P + 3, y:foh.y1, w:7 * P - 6, h:foh.y2 - foh.y1, rx:6, cls:"foh" });
 
-    // FOH (consola de sonido) en el centro
-    let fohX = 0, fohY = 0, fohN = 0;
-
-    filasInfo.forEach((fila, i) => {
-
-        const sig = filasInfo[i + 1];
-
-        fila.foh.forEach(c => {
-
-            const y1 = fila.y - P / 2;
-
-            const y2 = (sig && sig.foh.length) ? sig.y - P / 2 : fila.y + P / 2;
-
-            piso.formas.push({ t:"rect", x:c.x + 3, y:y1, w:c.w - 6, h:y2 - y1, rx:0, cls:"foh" });
-
-            if(c.w === 5 * P){
-
-                fohX += c.x + c.w / 2;
-                fohY += fila.y;
-                fohN++;
-            }
-        });
-    });
-
-    piso.formas.push({ t:"text", x:fohX / fohN, y:fohY / fohN + 6, texto:"FOH", cls:"fohText" });
-
+    piso.formas.push({ t:"text", x:X0 + 9.5 * P, y:(foh.y1 + foh.y2) / 2 + 6, texto:"FOH", cls:"fohText" });
 
     piso.generales.push({
         id: "graderia",

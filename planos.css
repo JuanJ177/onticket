@@ -66,9 +66,10 @@
 .palco .palcoSub{ fill:var(--t); font-weight:700; font-size:8px; opacity:0.85; }
 .palco:hover rect{ filter:brightness(1.18); stroke:white; stroke-width:2; }
 
-.palco.ind rect{ fill:var(--ind); stroke:var(--c); stroke-width:3.5; filter:drop-shadow(0 0 6px rgba(16,185,129,0.65)); }
+/* palco individual (venta por puesto): el color de su localidad, más clarito */
+.palco.ind rect{ fill:var(--cl); stroke:var(--c); stroke-width:2.5; stroke-dasharray:4 2; }
 .palco.ind .palcoNum,
-.palco.ind .palcoSub{ fill:white; }
+.palco.ind .palcoSub{ fill:#1d1d24; }
 
 .palco.sold rect{ fill:#2c2e36; stroke:#3a3d47; filter:none; }
 .palco.sold .palcoNum,

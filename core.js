@@ -425,6 +425,16 @@ function pisoDeZona(plano, zonaId){
    Devuelve el contenido del <svg> (se dibuja igual en web y app)
 ======================================== */
 
+// mezcla un color con blanco (palcos individuales: el mismo color, más clarito)
+function aclarar(hex, cuanto = 0.55){
+
+    const n = parseInt(hex.slice(1), 16);
+
+    const mezcla = c => Math.round(c + (255 - c) * cuanto);
+
+    return `rgb(${mezcla(n >> 16)}, ${mezcla((n >> 8) & 255)}, ${mezcla(n & 255)})`;
+}
+
 function textoVertical(x, y, texto, cls){
 
     return `<text x="${x}" y="${y}" class="${cls}" transform="rotate(-90 ${x} ${y})" text-anchor="middle" dominant-baseline="middle">${texto}</text>`;
@@ -558,7 +568,7 @@ function planoSVG(evento, pisoIdx, estado, carrito, filtro){
 
         const chico = p.w < 40;
 
-        html += `<g class="${clases}" data-kind="palco" data-id="${p.id}" data-tip="${esc(tip)}" style="--c:${z.color};--t:${z.texto}">
+        html += `<g class="${clases}" data-kind="palco" data-id="${p.id}" data-tip="${esc(tip)}" style="--c:${z.color};--t:${z.texto};--cl:${aclarar(z.color)}">
             <rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="${chico ? 4 : 7}"/>
             <text x="${p.x + p.w / 2}" y="${p.y + p.h / 2 - (chico ? 0 : 5)}" class="palcoNum ${chico ? "small" : ""}" text-anchor="middle" dominant-baseline="middle">${p.num}</text>
             ${chico ? "" : `<text x="${p.x + p.w / 2}" y="${p.y + p.h / 2 + 9}" class="palcoSub" text-anchor="middle" dominant-baseline="middle">${p.individual ? (enCarro ? enCarro + " tuyos" : libres + "/10") : (enCarro ? "tuyo" : "x10")}</text>`}

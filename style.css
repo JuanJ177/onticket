@@ -535,7 +535,7 @@ body.landingMode .header{
     height:100%;
     max-width:1300px;
     margin:0 auto;
-    padding:70px 60px 90px;
+    padding:80px 60px 140px;
     display:grid;
     grid-template-columns:1.1fr 1fr;
     align-items:center;
@@ -662,7 +662,7 @@ body.landingMode .header{
 .slidePoster img{
 
     width:100%;
-    max-height:440px;
+    max-height:min(420px, calc(min(78vh, 640px) - 250px));
     object-fit:cover;
     display:block;
 }
@@ -722,7 +722,7 @@ body.landingMode .header{
 .heroDots{
 
     position:absolute;
-    bottom:26px;
+    bottom:68px;
     left:50%;
     transform:translateX(-50%);
     z-index:3;
@@ -1673,7 +1673,7 @@ body.landingMode .header{
 .lgDisp{ background:linear-gradient(135deg, #e53935, #1e9be9, #f5b400); }
 .lgSel{ background:white; border:3px solid var(--brand); }
 .lgSold{ background:#2c2e36; }
-.lgInd{ background:var(--ind); border-radius:4px; box-shadow:0 0 6px rgba(16,185,129,0.7); }
+.lgInd{ background:#a5d7f6; border:2px dashed #1e9be9; border-radius:4px; }
 .lgPalco{ background:#1e9be9; border-radius:4px; }
 
 
@@ -3284,7 +3284,7 @@ body.modalOpen .toastZone{
     .slideContent{
 
         grid-template-columns:1fr;
-        padding:70px 24px 80px;
+        padding:70px 24px 120px;
         gap:20px;
     }
 
