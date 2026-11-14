@@ -219,3 +219,14 @@ Datos de prueba de Wompi (sandbox): tarjeta `4242 4242 4242 4242` (aprobada) o
   Cada localidad tiene su nombre, color y precio. El diseño se guarda en el evento (`diseno`) y
   la web, la app y el servidor generan el mismo plano con `construirPlanoPropio` (planos.js).
 - Los eventos de ejemplo tienen ocupación de demostración; los creados desde el panel arrancan en cero.
+
+### Estadios y planos grandes
+
+- En el editor: **Tribuna en curva** (radio, filas y ángulos), **giro** de cualquier bloque y
+  **nombre de sección** (Oriental 101, Norte Alta...).
+- Si el plano pasa de 2.500 ubicaciones numeradas, el público ve primero el **mapa por secciones**
+  y al tocar una sección aparecen sus sillas (el celular nunca dibuja miles a la vez).
+- Topes: 120.000 ubicaciones numeradas por plano y 5.000 por sección; las zonas generales no cuentan.
+- Las boletas muestran la sección: "Platea · Oriental 101 · Fila C · Silla 12".
+- Las apps 1.6.2 o anteriores no entienden los planos propios: conviene aprobar esos eventos
+  cuando la mayoría ya actualizó (el aviso de actualización sale solo).

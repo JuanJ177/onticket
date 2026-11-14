@@ -705,6 +705,17 @@ function prepararFiltrosPlano(){
 
 function renderPisoTabs(){
 
+    // estadio: primero el mapa de secciones; en una sección, un botón para volver
+    if(planoActual.secciones){
+
+        $("pisoTabs").innerHTML = pisoActual === 0
+            ? `<span class="pisoAyuda"><i class="fa-solid fa-hand-pointer"></i> Toca una sección del mapa para ver sus sillas</span>`
+            : `<button class="pisoTab active" onclick="cambiarPiso(0)"><i class="fa-solid fa-arrow-left"></i> Mapa</button>
+               <span class="pisoAyuda"><b>${esc(planoActual.pisos[pisoActual].nombre)}</b> · ${estadoVenta.disponiblesPiso(pisoActual).toLocaleString("es-CO")} disponibles</span>`;
+
+        return;
+    }
+
     if(planoActual.pisos.length < 2){
 
         $("pisoTabs").innerHTML = "";
@@ -767,6 +778,14 @@ function enfocarZona(id){
 }
 
 function irAPisoDeZona(id){
+
+    // en el mapa del estadio el filtro solo resalta las secciones de esa localidad
+    if(planoActual.secciones){
+
+        if(pisoActual !== 0) cambiarPiso(0);
+
+        return;
+    }
 
     const i = pisoDeZona(planoActual, id);
 
@@ -844,6 +863,15 @@ svg.addEventListener("click", e => {
     if(kind === "zona"){
 
         enfocarZona(g.dataset.zona);
+
+        return;
+    }
+
+    if(kind === "seccion"){
+
+        tooltip.classList.remove("show");
+
+        cambiarPiso(Number(g.dataset.piso));
 
         return;
     }

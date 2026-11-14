@@ -3204,3 +3204,6 @@ body.claro .toast{
     font-size:14px;
     color:var(--muted);
 }
+
+
+.pisoAyuda{ display:inline-flex; gap:8px; align-items:center; color:var(--muted); font-size:14px; padding:6px 4px; }

@@ -124,7 +124,7 @@ function construirItems(evento, pedidos){
 
             const z = plano.zonas[a.zona];
 
-            return { key, tipo:"asiento", zona:a.zona, etiqueta:`${z.nombre} · Fila ${a.fila} · Silla ${a.num}`, corto:`${z.nombre} ${a.fila}${a.num}`, precio:precioZona(evento, a.zona), cantidad:1, personas:1, ids:[key], eventoId:evento.id };
+            return { key, tipo:"asiento", zona:a.zona, etiqueta:`${z.nombre}${a.seccion ? " · " + a.seccion : ""} · Fila ${a.fila} · Silla ${a.num}`, corto:`${z.nombre} ${a.fila}${a.num}`, precio:precioZona(evento, a.zona), cantidad:1, personas:1, ids:[key], eventoId:evento.id };
         }
 
         if(p.tipo === "palco"){
@@ -135,7 +135,7 @@ function construirItems(evento, pedidos){
 
             const z = plano.zonas[pa.zona];
 
-            return { key, tipo:"palco", palco:pa.id, zona:pa.zona, etiqueta:`${z.nombre} · Palco ${pa.num} (10 personas)`, corto:`Palco ${pa.num}`, precio:precioZona(evento, pa.zona), cantidad:1, personas:10, ids:[key], eventoId:evento.id };
+            return { key, tipo:"palco", palco:pa.id, zona:pa.zona, etiqueta:`${z.nombre}${pa.seccion ? " · " + pa.seccion : ""} · Palco ${pa.num} (10 personas)`, corto:`Palco ${pa.num}`, precio:precioZona(evento, pa.zona), cantidad:1, personas:10, ids:[key], eventoId:evento.id };
         }
 
         if(p.tipo === "puesto"){
@@ -150,7 +150,7 @@ function construirItems(evento, pedidos){
 
             const z = plano.zonas[pa.zona];
 
-            return { key, tipo:"puesto", palco:pa.id, zona:pa.zona, etiqueta:`${z.nombre} · Palco ${pa.num} · Puesto ${n}`, corto:`P${pa.num}-${n}`, precio:precioPuesto(evento, pa.zona), cantidad:1, personas:1, ids:[key], eventoId:evento.id };
+            return { key, tipo:"puesto", palco:pa.id, zona:pa.zona, etiqueta:`${z.nombre}${pa.seccion ? " · " + pa.seccion : ""} · Palco ${pa.num} · Puesto ${n}`, corto:`P${pa.num}-${n}`, precio:precioPuesto(evento, pa.zona), cantidad:1, personas:1, ids:[key], eventoId:evento.id };
         }
 
         if(p.tipo === "general"){

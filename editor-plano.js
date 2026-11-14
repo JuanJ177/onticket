@@ -1,9 +1,10 @@
 /* ========================================
    EDITOR VISUAL DE PLANOS (web)
    El promotor sube la imagen del plano real como guía y encima arma
-   bloques: escenario, filas de sillas, palcos de 10, zonas generales
-   y bloques de texto (baños, entradas...). Cada bloque se arrastra,
-   se ajusta con la esquina y se le asigna una localidad con precio.
+   bloques: escenario, filas de sillas, tribunas en curva, palcos de 10,
+   zonas generales y bloques de texto (baños, entradas...). Cada bloque se
+   arrastra, se gira, se ajusta con la esquina y se le asigna una localidad.
+   En planos grandes (estadios) cada bloque numerado es una sección.
    Requiere: planos.js (construirPlanoPropio, validarDiseno), core.js
 ======================================== */
 
@@ -112,9 +113,19 @@ function dibujarLienzo(){
 
         const sel = b.id === bloqueSel;
 
+        if(b.tipo === "curva"){
+
+            return `<path class="marcoBloque ${sel ? "sel" : ""}" data-bloque="${b.id}" d="${contornoBloque(b)}"/>`;
+        }
+
+        const giro = b.rot ? ` transform="rotate(${b.rot} ${b.x + m.w / 2} ${b.y + m.h / 2})"` : "";
+
+        // la esquina sigue al bloque cuando está girado
+        const esquina = girar(b.x + m.w, b.y + m.h, b.x + m.w / 2, b.y + m.h / 2, b.rot || 0);
+
         return `
-            <rect class="marcoBloque ${sel ? "sel" : ""}" data-bloque="${b.id}" x="${b.x}" y="${b.y}" width="${m.w}" height="${m.h}" rx="6"/>
-            ${sel ? `<rect class="tiradorBloque" data-tirador="${b.id}" x="${b.x + m.w - t / 2}" y="${b.y + m.h - t / 2}" width="${t}" height="${t}" rx="${t / 4}"/>` : ""}`;
+            <rect class="marcoBloque ${sel ? "sel" : ""}" data-bloque="${b.id}" x="${b.x}" y="${b.y}" width="${m.w}" height="${m.h}" rx="6"${giro}/>
+            ${sel ? `<rect class="tiradorBloque" data-tirador="${b.id}" x="${esquina.x - t / 2}" y="${esquina.y - t / 2}" width="${t}" height="${t}" rx="${t / 4}"/>` : ""}`;
 
     }).join("") + `</g>`;
 
@@ -159,7 +170,7 @@ function iniciarArrastre(e){
 
     const m = medidaBloque(b);
 
-    arrastrePlano = { b, modo: marco.dataset.tirador ? "tamano" : "mover", x0: p.x, y0: p.y, bx: b.x, by: b.y, bw: m.w, bh: m.h };
+    arrastrePlano = { b, modo: marco.dataset.tirador ? "tamano" : "mover", x0: p.x, y0: p.y, bx: b.x, by: b.y, bcx: b.cx, bcy: b.cy, bw: m.w, bh: m.h };
 
     $("lienzoPlano").setPointerCapture(e.pointerId);
 
@@ -181,30 +192,55 @@ function moverArrastre(e){
 
     const p = puntoEnLienzo(e);
 
-    const dx = p.x - arrastrePlano.x0, dy = p.y - arrastrePlano.y0;
+    let dx = p.x - arrastrePlano.x0, dy = p.y - arrastrePlano.y0;
 
     const b = arrastrePlano.b, d = disenoEditor;
 
+    if(arrastrePlano.modo === "mover" && b.tipo === "curva"){
+
+        b.cx = clamp(ajustar(arrastrePlano.bcx + dx), 0, d.w);
+
+        b.cy = clamp(ajustar(arrastrePlano.bcy + dy), 0, d.h);
+
+        pedirDibujo();
+
+        return;
+    }
+
     if(arrastrePlano.modo === "mover"){
 
-        b.x = clamp(ajustar(arrastrePlano.bx + dx), 0, d.w - arrastrePlano.bw);
+        // un bloque girado puede quedar con la mitad de su caja por fuera
+        b.x = clamp(ajustar(arrastrePlano.bx + dx), -arrastrePlano.bw / 2, d.w - arrastrePlano.bw / 2);
 
-        b.y = clamp(ajustar(arrastrePlano.by + dy), 0, d.h - arrastrePlano.bh);
+        b.y = clamp(ajustar(arrastrePlano.by + dy), -arrastrePlano.bh / 2, d.h - arrastrePlano.bh / 2);
 
-    }else if(b.tipo === "sillas" || b.tipo === "palcos"){
+        pedirDibujo();
+
+        return;
+    }
+
+    // la esquina se mueve en la dirección del bloque girado
+    if(b.rot){
+
+        const c = Math.cos(rad(-b.rot)), sn = Math.sin(rad(-b.rot));
+
+        [dx, dy] = [dx * c - dy * sn, dx * sn + dy * c];
+    }
+
+    if(b.tipo === "sillas" || b.tipo === "palcos"){
 
         // con la esquina se agregan o quitan filas y columnas
         const c = b.tipo === "sillas" ? CELDA_PLANO.sillas : CELDA_PLANO[b.forma === "cuadro" ? "cuadro" : "circulo"];
 
-        b.columnas = clamp(Math.round((arrastrePlano.bw + dx) / c.w), 1, Math.min(80, Math.floor((d.w - b.x) / c.w)));
+        b.columnas = clamp(Math.round((arrastrePlano.bw + dx) / c.w), 1, 200);
 
-        b.filas = clamp(Math.round((arrastrePlano.bh + dy) / c.h), 1, Math.min(60, Math.floor((d.h - b.y) / c.h)));
+        b.filas = clamp(Math.round((arrastrePlano.bh + dy) / c.h), 1, 100);
 
     }else{
 
-        b.w = clamp(ajustar(arrastrePlano.bw + dx), 20, d.w - b.x);
+        b.w = clamp(ajustar(arrastrePlano.bw + dx), 20, d.w);
 
-        b.h = clamp(ajustar(arrastrePlano.bh + dy), 20, d.h - b.y);
+        b.h = clamp(ajustar(arrastrePlano.bh + dy), 20, d.h);
     }
 
     pedirDibujo();
@@ -274,6 +310,19 @@ function agregarBloque(tipo){
 
     if(tipo === "general") b = { tipo, zona: zonaDeTipo("general"), w: 300, h: 90, capacidad: 300 };
 
+    if(tipo === "curva"){
+
+        b = { tipo, zona: zonaDeTipo("asiento"), cx: ajustar(cx), cy: ajustar(cy), radio: 160, filas: 8, desde: 200, hasta: 340, id: nuevoId("b") };
+
+        d.bloques.push(b);
+
+        bloqueSel = b.id;
+
+        renderEditorPlano();
+
+        return;
+    }
+
     b.id = nuevoId("b");
 
     const m = medidaBloque(b);
@@ -295,7 +344,9 @@ function duplicarBloque(){
 
     if(!b) return;
 
-    const copia = { ...b, id: nuevoId("b"), x: b.x + 24, y: b.y + 24 };
+    const copia = b.tipo === "curva"
+        ? { ...b, id: nuevoId("b"), nombre: "", cx: b.cx + 24, cy: b.cy + 24 }
+        : { ...b, id: nuevoId("b"), nombre: "", x: b.x + 24, y: b.y + 24 };
 
     disenoEditor.bloques.push(copia);
 
@@ -396,20 +447,22 @@ function cambiarBloque(campo, valor){
 
     const b = disenoEditor.bloques.find(x => x.id === bloqueSel);
 
-    const numero = ["filas", "columnas", "individuales", "capacidad", "w", "h"].includes(campo);
+    const numero = ["filas", "columnas", "individuales", "capacidad", "w", "h", "rot", "radio", "desde", "hasta"].includes(campo);
 
     b[campo] = numero ? Number(valor) : valor;
 
-    const d = disenoEditor;
-
-    // que no se salga del lienzo
-    const m = medidaBloque(b);
-
-    b.x = clamp(b.x, 0, Math.max(0, d.w - m.w));
-
-    b.y = clamp(b.y, 0, Math.max(0, d.h - m.h));
+    if(campo === "rot") b.rot = ((b.rot % 360) + 360) % 360;
 
     dibujarLienzo();
+
+    if(campo === "rot") renderPropiedades();
+}
+
+function girarBloque(grados){
+
+    const b = disenoEditor.bloques.find(x => x.id === bloqueSel);
+
+    cambiarBloque("rot", (b.rot || 0) + grados);
 }
 
 function renderPropiedades(){
@@ -423,12 +476,14 @@ function renderPropiedades(){
         return;
     }
 
-    const tipoZona = { sillas: "asiento", palcos: "palco", general: "general" }[b.tipo];
+    const tipoZona = { sillas: "asiento", palcos: "palco", general: "general", curva: "asiento" }[b.tipo];
 
     const campo = (etiqueta, nombre, valor, extra = "") =>
         `<label>${etiqueta}<input type="number" value="${valor}" ${extra} onchange="cambiarBloque('${nombre}', this.value)"></label>`;
 
-    const titulo = { escenario: "Escenario", bloque: "Bloque de texto", sillas: "Filas de sillas", palcos: "Palcos de 10 personas", general: "Zona general" }[b.tipo];
+    const titulo = { escenario: "Escenario", bloque: "Bloque de texto", sillas: "Filas de sillas", palcos: "Palcos de 10 personas", general: "Zona general", curva: "Tribuna en curva" }[b.tipo];
+
+    const numerado = ["sillas", "palcos", "curva"].includes(b.tipo);
 
     $("propiedadesBloque").innerHTML = `
         <b class="tituloBloque">${titulo}</b>
@@ -438,6 +493,21 @@ function renderPropiedades(){
                 ${disenoEditor.zonas.filter(z => z.tipo === tipoZona).map(z => `<option value="${z.id}" ${z.id === b.zona ? "selected" : ""}>${esc(z.nombre)}</option>`).join("")}
             </select>
         </label>` : ""}
+        ${numerado ? `
+        <label>Nombre de la sección
+            <input value="${esc(b.nombre || "")}" maxlength="30" placeholder="Ej: Oriental 101" onchange="cambiarBloque('nombre', this.value.trim())">
+        </label>
+        <small class="ayuda">${ubicacionesBloque(b).toLocaleString("es-CO")} ${b.tipo === "palcos" ? "palcos" : "sillas"} en esta sección</small>` : ""}
+        ${b.tipo === "curva" ? `
+        <div class="dosCampos">
+            ${campo("Radio interior", "radio", b.radio, 'min="10" step="10"')}
+            ${campo("Filas", "filas", b.filas, 'min="1" max="100"')}
+        </div>
+        <div class="dosCampos">
+            ${campo("Desde (°)", "desde", b.desde, 'step="5"')}
+            ${campo("Hasta (°)", "hasta", b.hasta, 'step="5"')}
+        </div>
+        <small class="ayuda">0° es a la derecha, 90° abajo, 180° a la izquierda y 270° arriba. Arrastra la tribuna para moverla.</small>` : ""}
         ${b.tipo === "sillas" || b.tipo === "palcos" ? `
         <div class="dosCampos">
             ${campo("Filas", "filas", b.filas, 'min="1" max="60"')}
@@ -461,6 +531,14 @@ function renderPropiedades(){
             ${campo("Ancho", "w", b.w, 'min="20" step="4"')}
             ${campo("Alto", "h", b.h, 'min="20" step="4"')}
         </div>` : ""}
+        ${b.tipo !== "curva" ? `
+        <label>Giro
+            <div class="filaGiro">
+                <button class="ghostBtn" onclick="girarBloque(-15)" title="Girar a la izquierda"><i class="fa-solid fa-rotate-left"></i></button>
+                <input type="number" value="${b.rot || 0}" step="5" onchange="cambiarBloque('rot', this.value)">
+                <button class="ghostBtn" onclick="girarBloque(15)" title="Girar a la derecha"><i class="fa-solid fa-rotate-right"></i></button>
+            </div>
+        </label>` : ""}
         <div class="botonesBloque">
             <button class="ghostBtn" onclick="duplicarBloque()"><i class="fa-regular fa-copy"></i> Duplicar</button>
             <button class="ghostBtn danger" onclick="eliminarBloque()"><i class="fa-regular fa-trash-can"></i> Borrar</button>
@@ -472,9 +550,9 @@ function renderPropiedades(){
 
 function cambiarTamanoLienzo(){
 
-    disenoEditor.w = clamp(Number($("planoAncho").value) || 900, 300, 3000);
+    disenoEditor.w = clamp(Number($("planoAncho").value) || 900, 300, 6000);
 
-    disenoEditor.h = clamp(Number($("planoAlto").value) || 640, 300, 3000);
+    disenoEditor.h = clamp(Number($("planoAlto").value) || 640, 300, 6000);
 
     dibujarLienzo();
 }
@@ -525,7 +603,7 @@ function cargarFondoPlano(input){
             fondoPlano = data;
 
             // el lienzo toma la proporción de la imagen
-            disenoEditor.h = clamp(Math.round(disenoEditor.w * c.height / c.width), 300, 3000);
+            disenoEditor.h = clamp(Math.round(disenoEditor.w * c.height / c.width), 300, 6000);
 
             $("planoAlto").value = disenoEditor.h;
 
@@ -554,23 +632,26 @@ function resumenDiseno(d){
 
     try{
 
-        const p = construirPlanoPropio(d).pisos[0];
+        const plano = construirPlanoPropio(d);
 
-        const individuales = p.palcos.filter(x => x.individual).length;
+        const asientos = plano.pisos.flatMap(p => p.asientos);
 
-        const general = p.generales.reduce((s, g) => s + g.capacidad, 0);
+        const palcos = plano.pisos.flatMap(p => p.palcos);
+
+        const general = plano.pisos[0].generales.reduce((s, g) => s + g.capacidad, 0);
 
         return {
-            sillas: p.asientos.length,
-            palcos: p.palcos.length,
-            individuales,
+            sillas: asientos.length,
+            palcos: palcos.length,
+            individuales: palcos.filter(x => x.individual).length,
             general,
-            personas: p.asientos.length + p.palcos.length * 10 + general
+            personas: asientos.length + palcos.length * 10 + general,
+            secciones: plano.secciones ? plano.pisos.length - 1 : 0
         };
 
     }catch(e){
 
-        return { sillas: 0, palcos: 0, individuales: 0, general: 0, personas: 0 };
+        return { sillas: 0, palcos: 0, individuales: 0, general: 0, personas: 0, secciones: 0 };
     }
 }
 
@@ -580,9 +661,10 @@ function renderResumenPlano(){
 
     $("resumenPlano").innerHTML = `
         <span><b>${r.personas.toLocaleString("es-CO")}</b> personas</span>
-        <span>${r.sillas} sillas</span>
+        <span>${r.sillas.toLocaleString("es-CO")} sillas</span>
         <span>${r.palcos} palcos (${r.individuales} individuales)</span>
-        <span>${r.general.toLocaleString("es-CO")} en general</span>`;
+        <span>${r.general.toLocaleString("es-CO")} en general</span>
+        ${r.secciones ? `<span class="enSecciones"><i class="fa-solid fa-layer-group"></i> Plano por secciones: ${r.secciones} secciones (el público ve primero el mapa)</span>` : ""}`;
 }
 
 function guardarEditorPlano(){

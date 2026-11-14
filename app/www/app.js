@@ -516,7 +516,7 @@ function abrirPlano(zonaId){
 
     zonasFiltro = new Set(zonaId ? [zonaId] : []);
 
-    if(zonaId){
+    if(zonaId && !plano.secciones){
 
         const p = pisoDeZona(plano, zonaId);
 
@@ -584,10 +584,23 @@ function recalcularEstado(){
 
 function renderPlanoCompleto(){
 
-    $("pisoTabs").innerHTML = plano.pisos.length > 1 ? plano.pisos.map((p, i) => `
-        <button class="${i === piso ? "active" : ""}" onclick="cambiarPiso(${i})">${p.nombre}</button>`).join("") : "";
+    if(plano.secciones){
 
-    $("pisoTabs").style.display = plano.pisos.length > 1 ? "" : "none";
+        // estadio: mapa de secciones; dentro de una sección, botón para volver
+        $("pisoTabs").innerHTML = piso === 0
+            ? `<span class="pisoAyuda"><i class="fa-solid fa-hand-pointer"></i> Toca una sección para ver sus sillas</span>`
+            : `<button class="active" onclick="cambiarPiso(0)"><i class="fa-solid fa-arrow-left"></i> Mapa</button>
+               <span class="pisoAyuda">${esc(plano.pisos[piso].nombre)}</span>`;
+
+        $("pisoTabs").style.display = "";
+
+    }else{
+
+        $("pisoTabs").innerHTML = plano.pisos.length > 1 ? plano.pisos.map((p, i) => `
+            <button class="${i === piso ? "active" : ""}" onclick="cambiarPiso(${i})">${p.nombre}</button>`).join("") : "";
+
+        $("pisoTabs").style.display = plano.pisos.length > 1 ? "" : "none";
+    }
 
     $("chipsZona").innerHTML = `
         <button class="chip ${zonasFiltro.size === 0 ? "active" : ""}" onclick="toggleZona(null)">Todas</button>` +
@@ -638,7 +651,7 @@ function toggleZona(id){
 
         zonasFiltro.add(id);
 
-        const p = pisoDeZona(plano, id);
+        const p = plano.secciones ? 0 : pisoDeZona(plano, id);
 
         if(p >= 0 && p !== piso){
 
@@ -770,6 +783,13 @@ svgPlano.addEventListener("click", e => {
     if(g.dataset.kind === "zona"){
 
         toggleZona(g.dataset.zona);
+
+        return;
+    }
+
+    if(g.dataset.kind === "seccion"){
+
+        cambiarPiso(Number(g.dataset.piso));
 
         return;
     }

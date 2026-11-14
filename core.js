@@ -386,6 +386,23 @@ function crearEstadoVenta(evento, ventas = {}, reservas = {}, uid = null){
             return Math.max(0, capacidad - ocupados);
         },
 
+        // ubicaciones libres de un piso o sección del plano
+        disponiblesPiso(i){
+
+            const p = plano.pisos[i];
+
+            let total = p.asientos.filter(a => !estado.asientoVendido(a)).length;
+
+            p.palcos.forEach(pa => {
+
+                if(pa.individual) total += estado.puestosPalco(pa).filter(x => !x.vendido).length;
+
+                else if(!estado.palcoVendido(pa)) total += pa.capacidad;
+            });
+
+            return total;
+        },
+
         disponiblesZona(zonaId){
 
             let total = 0;
@@ -487,22 +504,47 @@ function planoSVG(evento, pisoIdx, estado, carrito, filtro){
 
             const color = f.zona ? `style="--c:${zonas[f.zona].color}"` : "";
 
+            const cx = f.x + f.w / 2, cy = f.y + f.h / 2;
+
+            html += f.rot ? `<g transform="rotate(${f.rot} ${cx} ${cy})">` : "";
+
             html += `<rect x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="${f.rx || 0}" class="forma ${f.cls}" ${color}/>`;
 
             if(f.texto){
 
-                const cx = f.x + f.w / 2, cy = f.y + f.h / 2;
-
                 const cls = `formaText ${f.cls}Text ${f.small ? "small" : ""}`;
 
                 html += f.vertical
-                    ? textoVertical(cx, cy, f.texto, cls)
-                    : `<text x="${cx}" y="${cy}" class="${cls}" text-anchor="middle" dominant-baseline="middle">${f.texto}</text>`;
+                    ? textoVertical(cx, cy, esc(f.texto), cls)
+                    : `<text x="${cx}" y="${cy}" class="${cls}" text-anchor="middle" dominant-baseline="middle">${esc(f.texto)}</text>`;
             }
+
+            html += f.rot ? `</g>` : "";
 
         }else if(f.t === "text"){
 
-            html += `<text x="${f.x}" y="${f.y}" class="${f.cls}" text-anchor="middle">${f.texto}</text>`;
+            const giro = f.rotar ? ` transform="rotate(${f.rotar} ${f.cx} ${f.cy})"` : "";
+
+            html += `<text x="${f.x}" y="${f.y}" class="${f.cls}" text-anchor="middle"${giro}>${esc(f.texto)}</text>`;
+
+        }else if(f.t === "seccion"){
+
+            // mapa del estadio: cada sección se toca para ver sus sillas
+            const z = zonas[f.zona];
+
+            const disp = estado.disponiblesPiso(f.piso);
+
+            const letra = Math.max(12, piso.w / 95);
+
+            const clases = ["seccion", zonaVisible(f.zona) && !soloInd ? "" : "dim", disp ? "" : "sold"].join(" ");
+
+            const tip = `<b>${esc(z.nombre)} · ${esc(f.texto)}</b><br>${fmt(precioPersona(evento, f.zona))}<br>${disp ? disp.toLocaleString("es-CO") + " disponibles · toca para ver las sillas" : "Agotada"}`;
+
+            html += `<g class="${clases}" data-kind="seccion" data-piso="${f.piso}" data-tip="${esc(tip)}" style="--c:${z.color};--t:${z.texto}">
+                <path d="${f.d}"/>
+                <text x="${f.x}" y="${f.y - letra * 0.3}" class="seccionText" style="font-size:${letra}px" text-anchor="middle" dominant-baseline="middle">${esc(f.texto)}</text>
+                <text x="${f.x}" y="${f.y + letra * 0.9}" class="seccionSub" style="font-size:${letra * 0.75}px" text-anchor="middle" dominant-baseline="middle">${disp ? disp.toLocaleString("es-CO") + " disp." : "Agotada"}</text>
+            </g>`;
 
         }else if(f.t === "pill"){
 
@@ -550,7 +592,9 @@ function planoSVG(evento, pisoIdx, estado, carrito, filtro){
 
         const grande = g.w > 120;
 
-        html += `<g class="${clases}" data-kind="ga" data-id="${g.id}" data-tip="${esc(tip)}" style="--c:${z.color};--t:${z.texto}">
+        const giroGa = g.rot ? ` transform="rotate(${g.rot} ${g.x + g.w / 2} ${g.y + g.h / 2})"` : "";
+
+        html += `<g class="${clases}" data-kind="ga" data-id="${g.id}" data-tip="${esc(tip)}" style="--c:${z.color};--t:${z.texto}"${giroGa}>
             <rect x="${g.x}" y="${g.y}" width="${g.w}" height="${g.h}" rx="12"/>
             <text x="${g.x + g.w / 2}" y="${g.y + g.h / 2 - (grande ? 8 : 0)}" class="gaText ${grande ? "" : "small"}" text-anchor="middle" dominant-baseline="middle">${g.texto}</text>
             ${grande ? `<text x="${g.x + g.w / 2}" y="${g.y + g.h / 2 + 16}" class="gaSub" text-anchor="middle">${enCarro ? enCarro.cantidad + " en tu compra" : fmt(precioZona(evento, g.zona)) + " · " + disp + " disp."}</text>` : ""}
@@ -583,16 +627,18 @@ function planoSVG(evento, pisoIdx, estado, carrito, filtro){
             enCarro ? "sel" : ""
         ].join(" ");
 
+        const nombrePalco = `${z.nombre}${p.seccion ? " · " + esc(p.seccion) : ""} · Palco ${p.num}`;
+
         const tip = p.individual
-            ? `<b>${z.nombre} · Palco ${p.num}</b><br><span class="tipInd">Palco individual · venta por puesto</span><br>${fmt(precioPersona(evento, p.zona))} por puesto · ${libres}/10 libres`
-            : `<b>${z.nombre} · Palco ${p.num}</b><br>Palco completo · 10 personas<br>${fmt(precioZona(evento, p.zona))}${vendido ? " · Vendido" : ""}`;
+            ? `<b>${nombrePalco}</b><br><span class="tipInd">Palco individual · venta por puesto</span><br>${fmt(precioPersona(evento, p.zona))} por puesto · ${libres}/10 libres`
+            : `<b>${nombrePalco}</b><br>Palco completo · 10 personas<br>${fmt(precioZona(evento, p.zona))}${vendido ? " · Vendido" : ""}`;
 
         const chico = p.w < 40;
 
         html += `<g class="${clases}" data-kind="palco" data-id="${p.id}" data-tip="${esc(tip)}" style="--c:${z.color};--t:${z.texto};--cl:${aclarar(z.color)}">
             ${p.circulo
                 ? `<circle cx="${p.x + p.w / 2}" cy="${p.y + p.h / 2}" r="${p.w / 2}"/>`
-                : `<rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="${chico ? 4 : 7}"/>`}
+                : `<rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="${chico ? 4 : 7}"${p.rot ? ` transform="rotate(${p.rot} ${p.x + p.w / 2} ${p.y + p.h / 2})"` : ""}/>`}
             <text x="${p.x + p.w / 2}" y="${p.y + p.h / 2 - (chico ? 0 : 5) + (p.circulo ? 0.5 : 0)}" class="palcoNum ${chico ? "small" : ""} ${p.circulo ? "punto" : ""}" text-anchor="middle" dominant-baseline="middle">${p.num}</text>
             ${chico ? "" : `<text x="${p.x + p.w / 2}" y="${p.y + p.h / 2 + 9}" class="palcoSub" text-anchor="middle" dominant-baseline="middle">${p.individual ? (enCarro ? enCarro + " tuyos" : libres + "/10") : (enCarro ? "tuyo" : "x10")}</text>`}
         </g>`;
@@ -619,7 +665,7 @@ function planoSVG(evento, pisoIdx, estado, carrito, filtro){
             enCarrito.has(a.id) ? "sel" : ""
         ].join(" ");
 
-        const tip = `<b>${z.nombre}</b><br>Fila ${a.fila} · Silla ${a.num}<br>${apartada ? "Alguien la está comprando" : vendido ? "Vendido" : fmt(precioZona(evento, a.zona))}`;
+        const tip = `<b>${z.nombre}${a.seccion ? " · " + esc(a.seccion) : ""}</b><br>Fila ${a.fila} · Silla ${a.num}<br>${apartada ? "Alguien la está comprando" : vendido ? "Vendido" : fmt(precioZona(evento, a.zona))}`;
 
         html += `<g class="${clases}" data-kind="seat" data-id="${a.id}" data-tip="${esc(tip)}" style="--c:${z.color};--t:${z.texto}">
             <circle cx="${a.x}" cy="${a.y}" r="10"/>
@@ -645,7 +691,7 @@ function itemAsiento(evento, a){
 
     return {
         key: a.id, tipo: "asiento", zona: a.zona,
-        etiqueta: `${z.nombre} · Fila ${a.fila} · Silla ${a.num}`,
+        etiqueta: `${z.nombre}${a.seccion ? " · " + a.seccion : ""} · Fila ${a.fila} · Silla ${a.num}`,
         corto: `${z.nombre} ${a.fila}${a.num}`,
         precio: precioZona(evento, a.zona),
         cantidad: 1, personas: 1, ids: [a.id], eventoId: evento.id
@@ -658,7 +704,7 @@ function itemPuesto(evento, p, puesto){
 
     return {
         key: puesto.id, tipo: "puesto", palco: p.id, zona: p.zona,
-        etiqueta: `${z.nombre} · Palco ${p.num} · Puesto ${puesto.n}`,
+        etiqueta: `${z.nombre}${p.seccion ? " · " + p.seccion : ""} · Palco ${p.num} · Puesto ${puesto.n}`,
         corto: `P${p.num}-${puesto.n}`,
         precio: precioPersona(evento, p.zona),
         cantidad: 1, personas: 1, ids: [puesto.id], eventoId: evento.id
@@ -671,7 +717,7 @@ function itemPalco(evento, p){
 
     return {
         key: p.id, tipo: "palco", palco: p.id, zona: p.zona,
-        etiqueta: `${z.nombre} · Palco ${p.num} (10 personas)`,
+        etiqueta: `${z.nombre}${p.seccion ? " · " + p.seccion : ""} · Palco ${p.num} (10 personas)`,
         corto: `Palco ${p.num}`,
         precio: precioZona(evento, p.zona),
         cantidad: 1, personas: 10, ids: [p.id], eventoId: evento.id

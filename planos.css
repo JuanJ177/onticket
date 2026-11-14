@@ -166,3 +166,14 @@
 
 /* palcos dibujados como punticos (Las Malocas) */
 .palco .palcoNum.punto{ font-size:9px; font-weight:700; }
+
+
+/* mapa de secciones (estadios) */
+.seccion{ cursor:pointer; transition:opacity 0.25s; }
+.seccion path{ fill:var(--c); fill-opacity:0.88; stroke:rgba(255,255,255,0.55); stroke-width:2; transition:0.15s; }
+.seccion:hover path{ fill-opacity:1; stroke:white; stroke-width:4; }
+.seccion .seccionText{ fill:var(--t); font-weight:800; font-family:var(--fontTitle); pointer-events:none; }
+.seccion .seccionSub{ fill:var(--t); font-weight:600; opacity:0.85; pointer-events:none; }
+.seccion.sold path{ fill:#2c2e36; stroke:#3a3d47; }
+.seccion.sold text{ fill:#6b6e7a; }
+.seccion.dim{ opacity:0.18; pointer-events:none; }

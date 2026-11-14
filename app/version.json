@@ -1,8 +1,8 @@
 {
-  "codigo": 11,
-  "nombre": "1.7.0",
+  "codigo": 12,
+  "nombre": "1.7.1",
   "notas": [
-    "Eventos de promotores con su propio plano",
-    "Los eventos nuevos empiezan sin boletas vendidas"
+    "Planos de estadio: primero el mapa por secciones y luego las sillas",
+    "Tribunas en curva y bloques girados en los planos de los promotores"
   ]
 }

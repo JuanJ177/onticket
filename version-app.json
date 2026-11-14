@@ -1,10 +1,10 @@
 {
-  "codigo": 11,
-  "nombre": "1.7.0",
+  "codigo": 12,
+  "nombre": "1.7.1",
   "notas": [
-    "Eventos de promotores con su propio plano",
-    "Los eventos nuevos empiezan sin boletas vendidas"
+    "Planos de estadio: primero el mapa por secciones y luego las sillas",
+    "Tribunas en curva y bloques girados en los planos de los promotores"
   ],
   "apk": "descargas/OnTicket.apk",
-  "publicada": "2026-11-14T06:37:54.113Z"
+  "publicada": "2026-11-14T07:07:27.882Z"
 }

@@ -16,7 +16,7 @@ const TIPO_ZONA = {
 
 function letraFila(i){
 
-    return String.fromCharCode(65 + i);
+    return i < 26 ? String.fromCharCode(65 + i) : letraFila(Math.floor(i / 26) - 1) + String.fromCharCode(65 + i % 26);
 }
 
 
@@ -454,22 +454,34 @@ const PLANOS = {
      w, h,                                      tamaño del lienzo
      zonas: [{ id, nombre, color, tipo, precio, precioPuesto }],
      bloques: [
-       { id, tipo:"escenario" | "bloque", x, y, w, h, texto },
-       { id, tipo:"sillas", zona, x, y, filas, columnas },
-       { id, tipo:"palcos", zona, x, y, filas, columnas, forma:"circulo" | "cuadro", individuales:% },
-       { id, tipo:"general", zona, x, y, w, h, capacidad }
+       { id, tipo:"escenario" | "bloque", x, y, w, h, rot, texto },
+       { id, tipo:"sillas", zona, nombre, x, y, filas, columnas, rot },
+       { id, tipo:"palcos", zona, nombre, x, y, filas, columnas, rot, forma:"circulo" | "cuadro", individuales:% },
+       { id, tipo:"general", zona, x, y, w, h, rot, capacidad, texto },
+       { id, tipo:"curva", zona, nombre, cx, cy, radio, filas, desde, hasta }   tribuna en curva (grados)
      ]
    }
+
+   Planos grandes (estadios): más de 2.500 ubicaciones numeradas se muestran
+   en dos niveles. El "piso" 0 es el mapa con las secciones; cada sección es
+   su propio piso con sus sillas. Así el celular nunca dibuja miles a la vez.
 ======================================== */
 
-// tamaño de cada celda en el lienzo
 const CELDA_PLANO = {
     sillas: { w:24, h:24 },
     circulo: { w:24, h:24 },
     cuadro: { w:52, h:40 }
 };
 
-// ancho y alto que ocupa un bloque
+const UMBRAL_SECCIONES = 2500;
+
+const MAX_POR_SECCION = 5000;
+
+const NUMERADOS = ["sillas", "palcos", "curva"];
+
+const rad = g => g * Math.PI / 180;
+
+// ancho y alto del bloque sin girar
 function medidaBloque(b){
 
     if(b.tipo === "sillas" || b.tipo === "palcos"){
@@ -479,7 +491,96 @@ function medidaBloque(b){
         return { w: b.columnas * c.w, h: b.filas * c.h };
     }
 
+    if(b.tipo === "curva"){
+
+        const r = b.radio + b.filas * 24;
+
+        return { w: r * 2, h: r * 2 };
+    }
+
     return { w: b.w, h: b.h };
+}
+
+// sillas de cada fila de una tribuna en curva (una cada 24 unidades de arco)
+function sillasFilaCurva(b, f){
+
+    const r = b.radio + f * 24 + 12;
+
+    const grados = Math.abs(b.hasta - b.desde);
+
+    return Math.max(1, Math.floor(r * rad(grados) / 24));
+}
+
+// cuántas ubicaciones numeradas tiene un bloque
+function ubicacionesBloque(b){
+
+    if(b.tipo === "sillas" || b.tipo === "palcos") return b.filas * b.columnas;
+
+    if(b.tipo === "curva"){
+
+        let n = 0;
+
+        for(let f = 0; f < b.filas; f++) n += sillasFilaCurva(b, f);
+
+        return n;
+    }
+
+    return 0;
+}
+
+// gira un punto alrededor de un centro
+function girar(x, y, cx, cy, grados){
+
+    if(!grados) return { x, y };
+
+    const c = Math.cos(rad(grados)), s = Math.sin(rad(grados));
+
+    return { x: cx + (x - cx) * c - (y - cy) * s, y: cy + (x - cx) * s + (y - cy) * c };
+}
+
+// contorno de un bloque en el lienzo (para el mapa de secciones y el editor)
+function contornoBloque(b){
+
+    if(b.tipo === "curva"){
+
+        const r1 = b.radio, r2 = b.radio + b.filas * 24;
+
+        const a1 = rad(b.desde), a2 = rad(b.hasta);
+
+        const p = (r, a) => `${(b.cx + r * Math.cos(a)).toFixed(1)} ${(b.cy + r * Math.sin(a)).toFixed(1)}`;
+
+        const grande = Math.abs(b.hasta - b.desde) > 180 ? 1 : 0;
+
+        const sentido = b.hasta > b.desde ? 1 : 0;
+
+        return `M ${p(r1, a1)} L ${p(r2, a1)} A ${r2} ${r2} 0 ${grande} ${sentido} ${p(r2, a2)} L ${p(r1, a2)} A ${r1} ${r1} 0 ${grande} ${1 - sentido} ${p(r1, a1)} Z`;
+    }
+
+    const m = medidaBloque(b);
+
+    const cx = b.x + m.w / 2, cy = b.y + m.h / 2;
+
+    const esquinas = [[b.x, b.y], [b.x + m.w, b.y], [b.x + m.w, b.y + m.h], [b.x, b.y + m.h]]
+        .map(([x, y]) => girar(x, y, cx, cy, b.rot || 0));
+
+    return "M " + esquinas.map(p => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" L ") + " Z";
+}
+
+// centro visual del bloque (para escribir su nombre)
+function centroBloque(b){
+
+    if(b.tipo === "curva"){
+
+        const medio = rad((b.desde + b.hasta) / 2);
+
+        const r = b.radio + b.filas * 12;
+
+        return { x: b.cx + r * Math.cos(medio), y: b.cy + r * Math.sin(medio) };
+    }
+
+    const m = medidaBloque(b);
+
+    return { x: b.x + m.w / 2, y: b.y + m.h / 2 };
 }
 
 // Revisa que el diseño sea válido y razonable (también lo usa el servidor)
@@ -489,9 +590,9 @@ function validarDiseno(d){
 
     if(!d || !Array.isArray(d.zonas) || !Array.isArray(d.bloques)) throw new Error("El plano está vacío");
 
-    if(!(d.w >= 200 && d.w <= 3000 && d.h >= 200 && d.h <= 3000)) throw new Error("El tamaño del plano no es válido");
+    if(!(d.w >= 200 && d.w <= 6000 && d.h >= 200 && d.h <= 6000)) throw new Error("El tamaño del plano no es válido");
 
-    if(d.zonas.length > 40 || d.bloques.length > 300) throw new Error("El plano tiene demasiados elementos");
+    if(d.zonas.length > 60 || d.bloques.length > 400) throw new Error("El plano tiene demasiados elementos");
 
     const zonas = {};
 
@@ -514,7 +615,7 @@ function validarDiseno(d){
 
     const ids = new Set();
 
-    const tipoZona = { sillas:"asiento", palcos:"palco", general:"general" };
+    const tipoZona = { sillas:"asiento", palcos:"palco", general:"general", curva:"asiento" };
 
     d.bloques.forEach(b => {
 
@@ -522,9 +623,20 @@ function validarDiseno(d){
 
         ids.add(b.id);
 
-        if(!["escenario", "bloque", "sillas", "palcos", "general"].includes(b.tipo)) throw new Error("Tipo de bloque inválido");
+        if(!["escenario", "bloque", "sillas", "palcos", "general", "curva"].includes(b.tipo)) throw new Error("Tipo de bloque inválido");
 
-        if(!(n(b.x) && n(b.y))) throw new Error("Hay un bloque sin posición");
+        if(b.tipo === "curva"){
+
+            if(!(n(b.cx) && n(b.cy) && b.radio >= 10 && b.radio <= 5000 && b.filas >= 1 && b.filas <= 100)) throw new Error("Una tribuna en curva tiene medidas inválidas");
+
+            if(!(n(b.desde) && n(b.hasta) && Math.abs(b.hasta - b.desde) >= 5 && Math.abs(b.hasta - b.desde) <= 360)) throw new Error("Una tribuna en curva tiene ángulos inválidos");
+
+        }else if(!(n(b.x) && n(b.y))){
+
+            throw new Error("Hay un bloque sin posición");
+        }
+
+        if(b.rot !== undefined && !(n(b.rot) && Math.abs(b.rot) <= 360)) throw new Error("Hay un bloque con un giro inválido");
 
         if(tipoZona[b.tipo]){
 
@@ -535,21 +647,129 @@ function validarDiseno(d){
 
         if(b.tipo === "sillas" || b.tipo === "palcos"){
 
-            if(!(b.filas >= 1 && b.filas <= 60 && b.columnas >= 1 && b.columnas <= 80)) throw new Error("Filas o columnas fuera de rango");
-
-            total += b.filas * b.columnas;
+            if(!(b.filas >= 1 && b.filas <= 100 && b.columnas >= 1 && b.columnas <= 200)) throw new Error("Filas o columnas fuera de rango");
         }
+
+        const u = ubicacionesBloque(b);
+
+        if(u > MAX_POR_SECCION) throw new Error(`Una sección tiene ${u.toLocaleString("es-CO")} ubicaciones; divídela (máximo ${MAX_POR_SECCION.toLocaleString("es-CO")} por sección)`);
+
+        total += u;
 
         if(b.tipo === "general" && !(b.capacidad >= 1 && b.capacidad <= 100000)) throw new Error("Ponle capacidad a la zona general");
 
         if(["escenario", "bloque", "general"].includes(b.tipo) && !(b.w >= 10 && b.h >= 10)) throw new Error("Hay un bloque demasiado pequeño");
     });
 
-    if(total > 30000) throw new Error("El plano tiene demasiadas ubicaciones");
+    if(total > 120000) throw new Error("El plano tiene demasiadas ubicaciones (máximo 120.000 numeradas)");
 
     if(!d.bloques.some(b => tipoZona[b.tipo])) throw new Error("El plano no tiene ubicaciones para vender");
 
     return true;
+}
+
+// Sillas y palcos de un bloque. Con "local" quedan derechas desde (0, 0)
+// (vista de una sección); si no, en su lugar real del lienzo, giradas.
+function ubicacionesDeBloque(b, z, numPalco, local){
+
+    const asientos = [], palcos = [];
+
+    const nombreSeccion = b.nombre || "";
+
+    if(b.tipo === "curva"){
+
+        // en una curva la vista de la sección también es curva: se corre al origen después
+        for(let f = 0; f < b.filas; f++){
+
+            const r = b.radio + f * 24 + 12;
+
+            const cuantas = sillasFilaCurva(b, f);
+
+            const paso = (b.hasta - b.desde) / cuantas;
+
+            const fila = letraFila(f);
+
+            for(let k = 0; k < cuantas; k++){
+
+                const a = rad(b.desde + paso * (k + 0.5));
+
+                asientos.push({ id:`${b.id}-${fila}${k + 1}`, zona:b.zona, fila, num:k + 1, seccion:nombreSeccion, x:b.cx + r * Math.cos(a), y:b.cy + r * Math.sin(a) });
+            }
+        }
+
+        return { asientos, palcos };
+    }
+
+    const m = medidaBloque(b);
+
+    const cx = m.w / 2, cy = m.h / 2;
+
+    // de coordenadas del bloque al lienzo
+    const ubicar = (x, y) => {
+
+        if(local) return { x, y };
+
+        const p = girar(x, y, cx, cy, b.rot || 0);
+
+        return { x: b.x + p.x, y: b.y + p.y };
+    };
+
+    if(b.tipo === "sillas"){
+
+        for(let f = 0; f < b.filas; f++){
+
+            const fila = letraFila(f);
+
+            for(let c = 0; c < b.columnas; c++){
+
+                const p = ubicar(c * 24 + 12, f * 24 + 12);
+
+                asientos.push({ id:`${b.id}-${fila}${c + 1}`, zona:b.zona, fila, num:c + 1, seccion:nombreSeccion, x:p.x, y:p.y });
+            }
+        }
+
+        return { asientos, palcos };
+    }
+
+    // palcos de 10 personas: la primera fila del bloque siempre es de palcos completos
+    const circulo = b.forma !== "cuadro";
+
+    const celda = CELDA_PLANO[circulo ? "circulo" : "cuadro"];
+
+    const delBloque = [];
+
+    for(let f = 0; f < b.filas; f++){
+
+        for(let c = 0; c < b.columnas; c++){
+
+            numPalco[b.zona] = (numPalco[b.zona] || 0) + 1;
+
+            const num = numPalco[b.zona];
+
+            const centro = ubicar(c * celda.w + celda.w / 2, f * celda.h + celda.h / 2);
+
+            const w = circulo ? 20 : celda.w - 6, h = circulo ? 20 : celda.h - 8;
+
+            const palco = { id:`${b.id}-P${num}`, zona:b.zona, num, seccion:nombreSeccion, x:centro.x - w / 2, y:centro.y - h / 2, w, h, capacidad:10, individual:false };
+
+            if(circulo) palco.circulo = true;
+
+            else if(!local && b.rot) palco.rot = b.rot;
+
+            palcos.push(palco);
+
+            delBloque.push({ palco, f });
+        }
+    }
+
+    const cuantos = Math.round(delBloque.length * Math.min(100, Math.max(0, Number(b.individuales) || 0)) / 100);
+
+    delBloque.filter(x => x.f > 0)
+        .sort((a, c) => azarPlano(a.palco.id) - azarPlano(c.palco.id))
+        .slice(0, cuantos)
+        .forEach(x => x.palco.individual = true);
+
+    return { asientos, palcos };
 }
 
 function construirPlanoPropio(d){
@@ -569,15 +789,23 @@ function construirPlanoPropio(d){
         if(z.tipo === "palco") zonas[z.id].precioPuesto = z.precioPuesto;
     });
 
-    const piso = { id:"p1", nombre:"Plano", w:d.w, h:d.h, formas:[], asientos:[], palcos:[], generales:[] };
+    const total = d.bloques.reduce((s, b) => s + ubicacionesBloque(b), 0);
+
+    const porSecciones = total > UMBRAL_SECCIONES;
+
+    const mapa = { id:"mapa", nombre:"Mapa", w:d.w, h:d.h, formas:[], asientos:[], palcos:[], generales:[] };
+
+    const pisos = [mapa];
 
     const numPalco = {};
+
+    const numSeccion = {};
 
     d.bloques.forEach(b => {
 
         if(b.tipo === "escenario" || b.tipo === "bloque"){
 
-            piso.formas.push({ t:"rect", x:b.x, y:b.y, w:b.w, h:b.h, rx:10, cls:b.tipo === "escenario" ? "escenario" : "bloque", texto:b.texto || "", vertical:b.h > b.w * 1.6 });
+            mapa.formas.push({ t:"rect", x:b.x, y:b.y, w:b.w, h:b.h, rx:10, rot:b.rot || 0, cls:b.tipo === "escenario" ? "escenario" : "bloque", texto:b.texto || "", vertical:b.h > b.w * 1.6 });
 
             return;
         }
@@ -586,65 +814,83 @@ function construirPlanoPropio(d){
 
         if(b.tipo === "general"){
 
-            piso.generales.push({ id:b.id, zona:b.zona, x:b.x, y:b.y, w:b.w, h:b.h, texto:(b.texto || z.nombre).toUpperCase(), capacidad:b.capacidad });
+            mapa.generales.push({ id:b.id, zona:b.zona, x:b.x, y:b.y, w:b.w, h:b.h, rot:b.rot || 0, texto:(b.texto || z.nombre).toUpperCase(), capacidad:b.capacidad });
 
             return;
         }
 
-        // nombre de la localidad encima del bloque
-        const m = medidaBloque(b);
+        if(!porSecciones){
 
-        piso.formas.push({ t:"text", x:b.x + m.w / 2, y:b.y - 6, texto:z.nombre.toUpperCase(), cls:"miniText" });
+            // plano pequeño: todo en una sola vista, en su lugar real
+            const u = ubicacionesDeBloque(b, z, numPalco, false);
+
+            mapa.asientos.push(...u.asientos);
+
+            mapa.palcos.push(...u.palcos);
+
+            const c = centroBloque(b);
+
+            const m = medidaBloque(b);
+
+            if(b.tipo !== "curva") mapa.formas.push({ t:"text", x:c.x, y:b.y - 6, texto:(b.nombre || z.nombre).toUpperCase(), cls:"miniText", rotar:b.rot || 0, cx:c.x, cy:c.y, alto:m.h });
+
+            return;
+        }
+
+        // estadio: cada bloque numerado es una sección con su propia vista
+        numSeccion[b.zona] = (numSeccion[b.zona] || 0) + 1;
+
+        const nombre = b.nombre || `${z.nombre} ${numSeccion[b.zona]}`;
+
+        const u = ubicacionesDeBloque({ ...b, nombre }, z, numPalco, true);
+
+        const todos = [...u.asientos.map(a => ({ x:a.x - 12, y:a.y - 12, w:24, h:24 })), ...u.palcos];
+
+        const minX = Math.min(...todos.map(p => p.x)), minY = Math.min(...todos.map(p => p.y));
+
+        const maxX = Math.max(...todos.map(p => p.x + p.w)), maxY = Math.max(...todos.map(p => p.y + p.h));
+
+        const PAD = 40;
+
+        const dx = PAD - minX, dy = PAD + 30 - minY;
+
+        u.asientos.forEach(a => { a.x += dx; a.y += dy; });
+
+        u.palcos.forEach(p => { p.x += dx; p.y += dy; });
+
+        const ancho = maxX - minX + PAD * 2, alto = maxY - minY + PAD * 2 + 30;
+
+        // letra de cada fila a la izquierda (en tribunas rectas)
+        const letras = [];
 
         if(b.tipo === "sillas"){
 
-            for(let f = 0; f < b.filas; f++){
+            const filas = {};
 
-                for(let c = 0; c < b.columnas; c++){
+            u.asientos.forEach(a => { if(!filas[a.fila] || a.x < filas[a.fila].x) filas[a.fila] = a; });
 
-                    const fila = letraFila(f);
-
-                    piso.asientos.push({ id:`${b.id}-${fila}${c + 1}`, zona:b.zona, fila, num:c + 1, x:b.x + c * 24 + 12, y:b.y + f * 24 + 12 });
-                }
-            }
-
-            return;
+            Object.values(filas).forEach(a => letras.push({ t:"text", x:a.x - 22, y:a.y + 4, texto:a.fila, cls:"filaText" }));
         }
 
-        // palcos de 10 personas: la primera fila del bloque siempre es de palcos completos
-        const circulo = b.forma !== "cuadro";
+        const piso = {
+            id: b.id,
+            nombre,
+            w: Math.max(ancho, 260),
+            h: alto,
+            formas: [{ t:"text", x:Math.max(ancho, 260) / 2, y:30, texto:`${z.nombre.toUpperCase()} · ${nombre.toUpperCase()}`, cls:"miniText" }, ...letras],
+            asientos: u.asientos,
+            palcos: u.palcos,
+            generales: []
+        };
 
-        const celda = CELDA_PLANO[circulo ? "circulo" : "cuadro"];
+        pisos.push(piso);
 
-        const delBloque = [];
+        const c = centroBloque(b);
 
-        for(let f = 0; f < b.filas; f++){
-
-            for(let c = 0; c < b.columnas; c++){
-
-                numPalco[b.zona] = (numPalco[b.zona] || 0) + 1;
-
-                const num = numPalco[b.zona];
-
-                const palco = circulo
-                    ? { id:`${b.id}-P${num}`, zona:b.zona, num, x:b.x + c * 24 + 2, y:b.y + f * 24 + 2, w:20, h:20, circulo:true, capacidad:10, individual:false }
-                    : { id:`${b.id}-P${num}`, zona:b.zona, num, x:b.x + c * celda.w + 3, y:b.y + f * celda.h + 4, w:celda.w - 6, h:celda.h - 8, capacidad:10, individual:false };
-
-                piso.palcos.push(palco);
-
-                delBloque.push({ palco, f });
-            }
-        }
-
-        const cuantos = Math.round(delBloque.length * Math.min(100, Math.max(0, Number(b.individuales) || 0)) / 100);
-
-        delBloque.filter(x => x.f > 0)
-            .sort((a, c) => azarPlano(a.palco.id) - azarPlano(c.palco.id))
-            .slice(0, cuantos)
-            .forEach(x => x.palco.individual = true);
+        mapa.formas.push({ t:"seccion", piso:pisos.length - 1, zona:b.zona, d:contornoBloque(b), texto:nombre, x:c.x, y:c.y });
     });
 
-    return { id:"propio", nombre:"Plano propio", zonas, pisos:[piso] };
+    return { id:"propio", nombre:"Plano propio", zonas, pisos, secciones: porSecciones };
 }
 
 // blanco o casi negro según qué se lea mejor sobre el color de la localidad
