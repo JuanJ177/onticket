@@ -60,22 +60,22 @@
 
 /* palcos */
 .palco{ cursor:pointer; transition:opacity 0.3s; }
-.palco rect{ fill:var(--c); stroke:rgba(255,255,255,0.35); stroke-width:1.2; transition:0.15s; }
+.palco :is(rect, circle){ fill:var(--c); stroke:rgba(255,255,255,0.35); stroke-width:1.2; transition:0.15s; }
 .palco .palcoNum{ fill:var(--t); font:800 13px var(--fontTitle); }
 .palco .palcoNum.small{ font-size:10px; }
 .palco .palcoSub{ fill:var(--t); font-weight:700; font-size:8px; opacity:0.85; }
-.palco:hover rect{ filter:brightness(1.18); stroke:white; stroke-width:2; }
+.palco:hover :is(rect, circle){ filter:brightness(1.18); stroke:white; stroke-width:2; }
 
 /* palco individual (venta por puesto): el color de su localidad, más clarito */
-.palco.ind rect{ fill:var(--cl); stroke:var(--c); stroke-width:2.5; stroke-dasharray:4 2; }
+.palco.ind :is(rect, circle){ fill:var(--cl); stroke:var(--c); stroke-width:2.5; stroke-dasharray:4 2; }
 .palco.ind .palcoNum,
 .palco.ind .palcoSub{ fill:#1d1d24; }
 
-.palco.sold rect{ fill:#2c2e36; stroke:#3a3d47; filter:none; }
+.palco.sold :is(rect, circle){ fill:#2c2e36; stroke:#3a3d47; filter:none; }
 .palco.sold .palcoNum,
 .palco.sold .palcoSub{ fill:#585b66; }
 
-.palco.sel rect{ fill:white; stroke:var(--brand); stroke-width:3.5; filter:none; }
+.palco.sel :is(rect, circle){ fill:white; stroke:var(--brand); stroke-width:3.5; filter:none; }
 .palco.sel .palcoNum,
 .palco.sel .palcoSub{ fill:var(--brand); }
 
@@ -97,14 +97,14 @@
 /* apartada por otra persona que está pagando */
 .seat.held circle{ fill:#5b4a2e; stroke:#f5b400; stroke-width:1.5; stroke-dasharray:2 2; }
 .seat.held text{ fill:#c9b37a; }
-.palco.held rect{ fill:#5b4a2e; stroke:#f5b400; stroke-dasharray:3 3; }
+.palco.held :is(rect, circle){ fill:#5b4a2e; stroke:#f5b400; stroke-dasharray:3 3; }
 
 /* mapa de calor (panel de estadísticas): el plano en gris y el calor encima */
 .modoCalor .seat circle,
 .modoCalor .seat.sold circle{ fill:#262830; stroke:none; }
 .modoCalor .seat text{ display:none; }
-.modoCalor .palco rect,
-.modoCalor .palco.sold rect{ fill:#262830; stroke:#33353f; filter:none; }
+.modoCalor .palco :is(rect, circle),
+.modoCalor .palco.sold :is(rect, circle){ fill:#262830; stroke:#33353f; filter:none; }
 .modoCalor .palco text{ fill:#5f626e; }
 .modoCalor .ga rect,
 .modoCalor .ga.sold rect{ fill:#1d1f26; stroke:#33353f; }
@@ -115,8 +115,8 @@
 .modoCalor .palco,
 .modoCalor .ga{ cursor:default; }
 
-.modoCalor .palco.ind rect,
-.modoCalor .palco.sel rect{ fill:#262830; stroke:#33353f; filter:none; }
+.modoCalor .palco.ind :is(rect, circle),
+.modoCalor .palco.sel :is(rect, circle){ fill:#262830; stroke:#33353f; filter:none; }
 .modoCalor .palco.ind text{ fill:#5f626e; }
 
 
@@ -162,3 +162,7 @@
     opacity:0.7;
     font-size:12px;
 }
+
+
+/* palcos dibujados como punticos (Las Malocas) */
+.palco .palcoNum.punto{ font-size:9px; font-weight:700; }

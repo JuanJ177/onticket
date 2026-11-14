@@ -1,11 +1,10 @@
 {
-  "codigo": 9,
-  "nombre": "1.6.1",
+  "codigo": 10,
+  "nombre": "1.6.2",
   "notas": [
-    "Coliseo Las Malocas: ahora con palcos para 10 personas",
-    "Los palcos que se venden por puesto tienen un color más claro",
-    "Nuevo afiche de Hassam"
+    "Coliseo Las Malocas: cada puntico es un palco de 10 personas",
+    "Los palcos que se venden por puesto tienen un color más claro"
   ],
   "apk": "descargas/OnTicket.apk",
-  "publicada": "2026-11-14T05:47:50.165Z"
+  "publicada": "2026-11-14T05:59:22.267Z"
 }

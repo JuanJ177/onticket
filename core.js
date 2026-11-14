@@ -569,8 +569,10 @@ function planoSVG(evento, pisoIdx, estado, carrito, filtro){
         const chico = p.w < 40;
 
         html += `<g class="${clases}" data-kind="palco" data-id="${p.id}" data-tip="${esc(tip)}" style="--c:${z.color};--t:${z.texto};--cl:${aclarar(z.color)}">
-            <rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="${chico ? 4 : 7}"/>
-            <text x="${p.x + p.w / 2}" y="${p.y + p.h / 2 - (chico ? 0 : 5)}" class="palcoNum ${chico ? "small" : ""}" text-anchor="middle" dominant-baseline="middle">${p.num}</text>
+            ${p.circulo
+                ? `<circle cx="${p.x + p.w / 2}" cy="${p.y + p.h / 2}" r="${p.w / 2}"/>`
+                : `<rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="${chico ? 4 : 7}"/>`}
+            <text x="${p.x + p.w / 2}" y="${p.y + p.h / 2 - (chico ? 0 : 5) + (p.circulo ? 0.5 : 0)}" class="palcoNum ${chico ? "small" : ""} ${p.circulo ? "punto" : ""}" text-anchor="middle" dominant-baseline="middle">${p.num}</text>
             ${chico ? "" : `<text x="${p.x + p.w / 2}" y="${p.y + p.h / 2 + 9}" class="palcoSub" text-anchor="middle" dominant-baseline="middle">${p.individual ? (enCarro ? enCarro + " tuyos" : libres + "/10") : (enCarro ? "tuyo" : "x10")}</text>`}
         </g>`;
     });

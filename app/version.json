@@ -1,9 +1,8 @@
 {
-  "codigo": 9,
-  "nombre": "1.6.1",
+  "codigo": 10,
+  "nombre": "1.6.2",
   "notas": [
-    "Coliseo Las Malocas: ahora con palcos para 10 personas",
-    "Los palcos que se venden por puesto tienen un color más claro",
-    "Nuevo afiche de Hassam"
+    "Coliseo Las Malocas: cada puntico es un palco de 10 personas",
+    "Los palcos que se venden por puesto tienen un color más claro"
   ]
 }
