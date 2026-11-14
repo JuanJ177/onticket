@@ -466,6 +466,28 @@ const DB = (() => {
                 });
             },
 
+            /* ----- pagos con Wompi (modo de pruebas) ----- */
+
+            // el servidor deja la compra pendiente y devuelve el link de pago de Wompi
+            async iniciarPago(eventoId, items, factura, retorno){
+
+                if(!usuario) throw new Error("Debes iniciar sesión");
+
+                return llamar("iniciarPago", { eventoId, items: pedido(items), factura: factura || null, retorno });
+            },
+
+            // estado del pago en tiempo real: PENDIENTE, APROBADO, RECHAZADO...
+            escucharPago(referencia, cb){
+
+                return fs.doc(`pagos/${referencia}`).onSnapshot(snap => { if(snap.exists) cb(snap.data()); }, () => {});
+            },
+
+            // al volver de Wompi: el servidor le pregunta a Wompi cómo quedó la transacción
+            async verificarPago(id){
+
+                return llamar("verificarPago", { id });
+            },
+
             async misCompras(){
 
                 if(!usuario) return [];

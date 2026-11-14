@@ -47,6 +47,12 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Pagos en Wompi: cada quien ve el estado de los suyos; solo el servidor escribe
+    match /pagos/{referencia} {
+      allow read: if logueado() && resource.data.uid == request.auth.uid;
+      allow write: if false;
+    }
+
     // Sillas vendidas y apartadas: todos las ven (para pintar el plano)
     match /ventas/{eventoId} {
       allow read: if true;

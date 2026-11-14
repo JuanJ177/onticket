@@ -56,6 +56,7 @@ let factura = { quiere:false };
 
 let intervaloQR = null;
 let dejarDeEscucharBoleta = null;
+let dejarDeEscucharPago = null;
 let intervaloDestacados = null;
 
 
@@ -1205,7 +1206,17 @@ function renderCheckout(){
 
     }else{
 
-        cuerpo = `
+        cuerpo = DB.iniciarPago ? `
+            <h2>Pago</h2>
+            <div class="wompiApp">
+                <span class="wompiMarca"><i class="fa-solid fa-shield-halved"></i> Wompi</span>
+                <p>Pagas en la página segura de Wompi: Nequi, PSE, tarjetas, Daviplata y Bancolombia.</p>
+            </div>
+            <label class="terminos">
+                <input type="checkbox" id="terminos">
+                Acepto los términos y condiciones y la política de datos.
+            </label>
+            <p class="nota"><i class="fa-solid fa-flask"></i> Wompi en modo de pruebas: no se cobra dinero real.</p>` : `
             <h2>Método de pago</h2>
             <div class="metodos">
                 ${METODOS.map(([n, img]) => `
@@ -1223,6 +1234,7 @@ function renderCheckout(){
     const boton = pagando ? '<i class="fa-solid fa-spinner fa-spin"></i> Procesando...'
         : paso === 1 ? 'Continuar <i class="fa-solid fa-arrow-right"></i>'
         : paso === 2 ? 'Ir a pagar <i class="fa-solid fa-arrow-right"></i>'
+        : DB.iniciarPago ? `<i class="fa-solid fa-lock"></i> Pagar ${fmt(c.total)} con Wompi`
         : `<i class="fa-solid fa-lock"></i> Pagar ${fmt(c.total)}`;
 
     abrirSheet(`
@@ -1286,6 +1298,13 @@ function siguientePaso(){
 async function pagar(){
 
     if(pagando) return;
+
+    if(DB.iniciarPago){
+
+        pagarConWompi();
+
+        return;
+    }
 
     if(!metodo){
 
@@ -1357,6 +1376,126 @@ async function pagar(){
 
         renderCheckout();
     }
+}
+
+/* ----- pago con Wompi (modo de pruebas) -----
+   Se abre la página de pago de Wompi en el navegador del celular y la app
+   escucha el estado del pago: cuando el servidor lo confirma, aparece la boleta. */
+
+function datosAdquiriente(){
+
+    return {
+        tipoPersona: factura.tipoPersona,
+        tipoDoc: factura.tipoDoc,
+        documento: factura.documento,
+        dv: factura.tipoDoc === "NIT" ? digitoVerificacion(factura.documento) : null,
+        nombre: factura.nombre,
+        correo: factura.correo,
+        telefono: factura.telefono || "",
+        direccion: factura.direccion,
+        ciudad: factura.ciudad,
+        responsabilidad: factura.responsabilidad
+    };
+}
+
+async function pagarConWompi(){
+
+    if(!$("terminos").checked){
+
+        toast("Acepta los términos y condiciones", "fa-triangle-exclamation");
+
+        return;
+    }
+
+    pagando = true;
+
+    renderCheckout();
+
+    try{
+
+        const r = await DB.iniciarPago(
+            evento.id,
+            carrito,
+            factura.quiere ? datosAdquiriente() : null,
+            `${CONFIG.sitioWeb || "https://onticket.co/"}?app=1`
+        );
+
+        pagando = false;
+
+        esperarPago(r.referencia);
+
+        const plugins = window.Capacitor && window.Capacitor.Plugins;
+
+        if(plugins && plugins.Browser) await plugins.Browser.open({ url: r.url });
+
+        else window.open(r.url, "_blank");
+
+    }catch(e){
+
+        pagando = false;
+
+        toast(esc(e.message), "fa-triangle-exclamation");
+
+        renderCheckout();
+    }
+}
+
+function esperarPago(referencia){
+
+    abrirSheet(`
+        <div class="auth">
+            <div class="verificaIcono"><i class="fa-solid fa-spinner fa-spin"></i></div>
+            <h2>Completa el pago en Wompi</h2>
+            <p class="sheetSub">Abrimos la página segura de Wompi. Cuando termines, vuelve aquí: tu boleta aparece sola.</p>
+            <p class="nota"><i class="fa-solid fa-flask"></i> Modo de pruebas: no se cobra dinero real.</p>
+        </div>`);
+
+    if(dejarDeEscucharPago) dejarDeEscucharPago();
+
+    dejarDeEscucharPago = DB.escucharPago(referencia, async p => {
+
+        if(p.estado === "PENDIENTE") return;
+
+        dejarDeEscucharPago();
+
+        dejarDeEscucharPago = null;
+
+        // en Android el navegador lo cierra la persona; en otros casos se intenta cerrar
+        const plugins = window.Capacitor && window.Capacitor.Plugins;
+
+        if(plugins && plugins.Browser) plugins.Browser.close().catch(() => {});
+
+        if(p.estado === "APROBADO"){
+
+            const compra = await DB.buscarCompra(p.codigoCompra);
+
+            detenerReserva();
+
+            compras.unshift(compra);
+
+            guardarCache();
+
+            carrito = [];
+
+            renderBoletas();
+
+            mostrarExito(compra);
+
+            return;
+        }
+
+        detenerReserva();
+
+        abrirSheet(`
+            <div class="auth">
+                <div class="verificaIcono"><i class="fa-solid ${p.estado === "RECHAZADO" ? "fa-circle-xmark" : "fa-triangle-exclamation"}"></i></div>
+                <h2>${p.estado === "RECHAZADO" ? "El pago no fue aprobado" : "Tu pago necesita revisión"}</h2>
+                <p class="sheetSub">${p.estado === "RECHAZADO"
+                    ? "No se hizo ningún cobro y tus ubicaciones quedaron libres. Puedes intentarlo de nuevo."
+                    : `${esc(p.motivo || "Hubo un problema con tu compra.")} Te devolveremos el dinero. Escríbenos a soporte@onticket.com con la referencia ${esc(referencia)}.`}</p>
+                <button class="btnPrimario ancho" onclick="atras()">Entendido</button>
+            </div>`);
+    });
 }
 
 /* ----- reserva temporal ----- */

@@ -1524,7 +1524,7 @@ function renderCheckout(){
         pagando ? '<i class="fa-solid fa-spinner fa-spin"></i> Procesando...'
         : pasoActual === 1 ? 'Continuar <i class="fa-solid fa-arrow-right"></i>'
         : pasoActual === 2 ? 'Ir a pagar <i class="fa-solid fa-arrow-right"></i>'
-        : `<i class="fa-solid fa-lock"></i> Pagar ${fmt(c.total)}`;
+        : `<i class="fa-solid fa-lock"></i> Pagar ${fmt(c.total)}${DB.iniciarPago ? " con Wompi" : ""}`;
 }
 
 function renderDesglose(){
@@ -1666,6 +1666,25 @@ const METODOS = [
 
 function renderMetodos(){
 
+    // con Firebase se paga de verdad en Wompi (modo de pruebas)
+    if(DB.iniciarPago){
+
+        $("paymentMethods").innerHTML = `
+            <div class="wompiPanel">
+                <span class="wompiMarca"><i class="fa-solid fa-shield-halved"></i> Wompi</span>
+                <div>
+                    <b>Pagas en la página segura de Wompi</b>
+                    <p>Nequi, PSE, tarjetas débito y crédito, Daviplata y Bancolombia. Al terminar vuelves aquí con tu boleta.</p>
+                </div>
+            </div>`;
+
+        $("metodoSeleccionado").style.display = "none";
+
+        document.querySelector("#paso3 .simNote").innerHTML = '<i class="fa-solid fa-flask"></i> Wompi en modo de pruebas: no se cobra dinero real.';
+
+        return;
+    }
+
     $("paymentMethods").innerHTML = METODOS.map(([nombre, img]) => `
         <div class="paymentMethod" onclick="seleccionarMetodo('${nombre}', this)">
             <img src="${img}" alt="${nombre}">
@@ -1693,6 +1712,13 @@ function seleccionarMetodo(nombre, el){
 async function confirmarCompra(){
 
     if(pagando) return;
+
+    if(DB.iniciarPago){
+
+        pagarConWompi();
+
+        return;
+    }
 
     if(!metodoPago){
 
@@ -1755,6 +1781,160 @@ async function confirmarCompra(){
         pagando = false;
 
         if($("checkoutModal").classList.contains("open")) renderCheckout();
+    }
+}
+
+
+
+/* ========================================
+   PAGO CON WOMPI
+   1. El servidor deja la compra pendiente y arma el link de pago.
+   2. La persona paga en Wompi y vuelve con ?pago=REFERENCIA&id=TRANSACCION.
+   3. El servidor confirma con Wompi y la boleta aparece.
+======================================== */
+
+async function pagarConWompi(){
+
+    if(!$("aceptaTerminos").checked){
+
+        toast("Debes aceptar los términos y condiciones", "fa-triangle-exclamation");
+
+        return;
+    }
+
+    pagando = true;
+
+    renderCheckout();
+
+    try{
+
+        const r = await DB.iniciarPago(
+            eventoActual.id,
+            carrito,
+            $("quiereFactura").checked ? datosFactura() : null,
+            location.origin + location.pathname
+        );
+
+        location.href = r.url;
+
+    }catch(e){
+
+        pagando = false;
+
+        renderCheckout();
+
+        toast(esc(e.message), "fa-triangle-exclamation");
+    }
+}
+
+// la sesión se restaura sola al cargar: aquí se espera a que esté lista
+let resolverUsuarioListo;
+
+const usuarioListo = new Promise(r => resolverUsuarioListo = r);
+
+function mostrarEstadoPago(icono, titulo, texto, boton){
+
+    $("pagoContenido").innerHTML = `
+        <div class="pagoEstado">
+            <div class="pagoIcono">${icono}</div>
+            <h2>${titulo}</h2>
+            <p>${texto}</p>
+            ${boton || ""}
+        </div>`;
+
+    abrirModal("pagoModal");
+}
+
+async function revisarRetornoPago(){
+
+    const params = new URLSearchParams(location.search);
+
+    const referencia = params.get("pago");
+
+    if(!referencia) return;
+
+    const id = params.get("id");
+
+    const desdeApp = params.get("app") === "1";
+
+    // la dirección queda limpia (si recarga, no se vuelve a procesar)
+    history.replaceState(null, "", location.pathname);
+
+    mostrarEstadoPago('<i class="fa-solid fa-spinner fa-spin"></i>', "Confirmando tu pago", "Estamos consultando el resultado con Wompi...");
+
+    let r = { estado: "PENDIENTE" };
+
+    try{
+
+        if(id && DB.verificarPago) r = await DB.verificarPago(id);
+
+    }catch(e){}
+
+    if(desdeApp){
+
+        mostrarEstadoPago(
+            r.estado === "APROBADO" ? '<i class="fa-solid fa-circle-check"></i>' : '<i class="fa-solid fa-mobile-screen-button"></i>',
+            r.estado === "APROBADO" ? "¡Pago aprobado!" : "Vuelve a la app",
+            r.estado === "APROBADO" ? "Vuelve a la app OnTicket: tu boleta ya está lista." : "Vuelve a la app OnTicket para ver el resultado de tu pago.");
+
+        return;
+    }
+
+    await usuarioListo;
+
+    const terminar = async estado => {
+
+        if(estado.estado === "APROBADO"){
+
+            const compra = await DB.buscarCompra(estado.codigo || estado.codigoCompra);
+
+            cerrarModal("pagoModal");
+
+            carrito = [];
+
+            renderCartBar();
+
+            detenerReserva();
+
+            if(compra) mostrarTicket(compra);
+
+            return true;
+        }
+
+        if(estado.estado === "RECHAZADO"){
+
+            mostrarEstadoPago('<i class="fa-solid fa-circle-xmark"></i>', "El pago no fue aprobado",
+                "No se hizo ningún cobro. Tus ubicaciones quedaron libres; puedes intentarlo de nuevo.",
+                `<button class="primaryBtn" onclick="cerrarModal('pagoModal')">Entendido</button>`);
+
+            return true;
+        }
+
+        if(estado.estado === "SIN_CUPO" || estado.estado === "REVISAR"){
+
+            mostrarEstadoPago('<i class="fa-solid fa-triangle-exclamation"></i>', "Tu pago necesita revisión",
+                `${esc(estado.motivo || "Hubo un problema con tu compra.")} Te devolveremos el dinero. Escríbenos a soporte@onticket.com con la referencia ${esc(referencia)}.`,
+                `<button class="primaryBtn" onclick="cerrarModal('pagoModal')">Entendido</button>`);
+
+            return true;
+        }
+
+        return false;
+    };
+
+    if(await terminar(r)) return;
+
+    // sigue en proceso (por ejemplo PSE): se espera el aviso de Wompi
+    mostrarEstadoPago('<i class="fa-solid fa-hourglass-half"></i>', "Tu pago está en proceso",
+        "Wompi aún no confirma la transacción. Esta ventana se actualiza sola cuando llegue la respuesta.",
+        `<button class="ghostBtn" onclick="cerrarModal('pagoModal')">Cerrar</button>`);
+
+    if(currentUser && DB.escucharPago){
+
+        const dejar = DB.escucharPago(referencia, async p => {
+
+            if(await terminar(p)) dejar();
+        });
     }
 }
 
@@ -2616,7 +2796,11 @@ DB.onUsuario(usuario => {
     actualizarUsuario();
 
     recalcularEstado();
+
+    resolverUsuarioListo();
 });
+
+revisarRetornoPago();
 
 function renderInicio(){
 

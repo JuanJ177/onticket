@@ -6,7 +6,7 @@
    - No guarda las descargas grandes (APK, video) ni Firebase.
 ======================================== */
 
-const CACHE = "onticket-v9";
+const CACHE = "onticket-v10";
 
 const BASICOS = [
     "./",

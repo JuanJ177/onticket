@@ -1,10 +1,10 @@
 {
-  "codigo": 7,
-  "nombre": "1.5.2",
+  "codigo": 8,
+  "nombre": "1.6.0",
   "notas": [
-    "Nuevo: Hassam · SUR-ViVOR en el Auditorio Bethlemitas de Bogotá",
-    "Ahora también hay eventos en Bogotá"
+    "Nuevo: paga con Wompi (Nequi, PSE, tarjetas, Daviplata y Bancolombia)",
+    "Tu boleta aparece sola cuando Wompi confirma el pago"
   ],
   "apk": "descargas/OnTicket.apk",
-  "publicada": "2026-11-03T07:51:09.099Z"
+  "publicada": "2026-11-14T05:17:24.166Z"
 }

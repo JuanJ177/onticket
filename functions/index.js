@@ -3,7 +3,10 @@
    Todo lo que mueve dinero o da acceso al evento se hace aquí,
    en el servidor, y no en el navegador o el celular:
 
-     comprar           calcula precios, valida disponibilidad y guarda la compra
+     iniciarPago       prepara la compra y el link de pago de Wompi
+     wompiEventos      Wompi avisa el resultado del pago (firma verificada)
+     verificarPago     confirma el pago al volver de Wompi
+     comprar           venta directa sin pasarela (solo administrador)
      reservar/liberar  aparta las ubicaciones mientras se paga
      eliminarCompra    anula una compra y libera las ubicaciones
      validarBoleta     la taquilla revisa el QR (firma secreta + hora del servidor)
@@ -11,7 +14,7 @@
      enviarCorreo      envía el correo de boletas / factura (Gmail)
 ======================================== */
 
-const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const { defineSecret } = require("firebase-functions/params");
@@ -33,6 +36,16 @@ setGlobalOptions({ region: "southamerica-east1", maxInstances: 5 });
 const GMAIL_CLAVE = defineSecret("GMAIL_CLAVE");
 
 const GMAIL_USUARIO = "onticket.co@gmail.com";
+
+// Wompi en modo de pruebas (sandbox). La llave pública no es secreta;
+// los secretos de integridad y de eventos están en Secret Manager.
+const WOMPI_PUBLICA = "pub_test_dLghZ9ZwXMmu497xasxMvzoO5Mq04uzO";
+const WOMPI_API = "https://sandbox.wompi.co/v1";
+const WOMPI_INTEGRIDAD = defineSecret("WOMPI_INTEGRIDAD");
+const WOMPI_EVENTOS = defineSecret("WOMPI_EVENTOS");
+
+// minutos que quedan apartadas las sillas mientras se paga en Wompi
+const MINUTOS_PAGO = 20;
 
 const METODOS = ["Nequi", "Daviplata", "PSE", "Visa", "Mastercard"];
 
@@ -182,6 +195,8 @@ function aplicarVenta(ventas, items, signo){
 
 const texto = (v, max = 120) => String(v ?? "").trim().slice(0, max);
 
+const sha256 = t => crypto.createHash("sha256").update(t).digest("hex");
+
 const fmt = v => "$" + Math.round(v).toLocaleString("es-CO");
 
 const esc = t => String(t ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
@@ -297,15 +312,44 @@ exports.liberar = onCall(async request => {
 
 /* ========================================
    COMPRAR
+   Con Wompi la compra va en dos partes:
+     1. iniciarPago: con los precios del catálogo oficial deja la compra
+        PENDIENTE (colección "pagos") y aparta las sillas mientras paga.
+     2. Cuando Wompi confirma la transacción (aviso firmado o consulta al
+        volver), se guarda la compra, se marcan las sillas y sale el correo.
 ======================================== */
 
-exports.comprar = onCall(async request => {
+// datos de facturación (si los pidió): se limpian y se recalcula el DV
+function limpiarAdquiriente(adq){
 
-    const auth = exigirUsuario(request);
+    if(!adq) return null;
 
-    const { eventoId, items: pedidos, metodo, factura: adq } = request.data || {};
+    const a = {
+        tipoPersona: adq.tipoPersona === "Jurídica" ? "Jurídica" : "Natural",
+        tipoDoc: ["CC", "CE", "NIT", "PP"].includes(adq.tipoDoc) ? adq.tipoDoc : "CC",
+        documento: texto(adq.documento, 20),
+        nombre: texto(adq.nombre),
+        correo: texto(adq.correo),
+        telefono: texto(adq.telefono, 30),
+        direccion: texto(adq.direccion),
+        ciudad: texto(adq.ciudad, 60),
+        responsabilidad: texto(adq.responsabilidad, 20) || "R-99-PN"
+    };
 
-    if(!METODOS.includes(metodo)) throw falla("invalid-argument", "Método de pago no válido");
+    a.dv = a.tipoDoc === "NIT" ? cat.digitoVerificacion(a.documento) : null;
+
+    if(!a.documento || !a.nombre || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a.correo)){
+
+        throw falla("invalid-argument", "Completa los datos de la factura");
+    }
+
+    return a;
+}
+
+// arma la compra con los precios oficiales (nunca los que manda el cliente)
+async function prepararCompra(auth, datos){
+
+    const { eventoId, items: pedidos, factura } = datos || {};
 
     const evento = await obtenerEvento(eventoId);
 
@@ -313,45 +357,16 @@ exports.comprar = onCall(async request => {
 
     const items = construir(evento, pedidos);
 
-    const costos = cat.calcularCostos(items);
-
-    const lugar = cat.LUGARES[evento.lugar];
+    const adquiriente = limpiarAdquiriente(factura);
 
     const usuario = await perfil(auth.uid);
 
-    // datos de facturación (si los pidió): se limpian y se recalcula el DV
-    let adquiriente = null;
-
-    if(adq){
-
-        adquiriente = {
-            tipoPersona: adq.tipoPersona === "Jurídica" ? "Jurídica" : "Natural",
-            tipoDoc: ["CC", "CE", "NIT", "PP"].includes(adq.tipoDoc) ? adq.tipoDoc : "CC",
-            documento: texto(adq.documento, 20),
-            nombre: texto(adq.nombre),
-            correo: texto(adq.correo),
-            telefono: texto(adq.telefono, 30),
-            direccion: texto(adq.direccion),
-            ciudad: texto(adq.ciudad, 60),
-            responsabilidad: texto(adq.responsabilidad, 20) || "R-99-PN"
-        };
-
-        adquiriente.dv = adquiriente.tipoDoc === "NIT" ? cat.digitoVerificacion(adquiriente.documento) : null;
-
-        if(!adquiriente.documento || !adquiriente.nombre || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adquiriente.correo)){
-
-            throw falla("invalid-argument", "Completa los datos de la factura");
-        }
-    }
-
-    const codigo = `ONTICKET-${crypto.randomInt(100000, 999999)}-${Math.floor(Date.now() / 60000)}`;
-
-    const fechaCompra = new Date().toISOString();
+    const lugar = cat.LUGARES[evento.lugar];
 
     const f = cat.fechaReal(evento);
 
     const compra = {
-        codigo,
+        codigo: `ONTICKET-${crypto.randomInt(100000, 999999)}-${Math.floor(Date.now() / 60000)}`,
         eventoId: evento.id,
         evento: `${evento.artista} · ${evento.titulo}`,
         fecha: cat.textoFecha(evento),
@@ -359,9 +374,9 @@ exports.comprar = onCall(async request => {
         lugar: `${lugar.nombre}, ${lugar.ciudad}`,
         items: items.map(({ capacidad, ...i }) => i),
         entradas: items.map(i => i.etiqueta),
-        ...costos,
-        metodo,
-        fechaCompra,
+        ...cat.calcularCostos(items),
+        metodo: "",
+        fechaCompra: null,
         factura: null,
         ingresos: 0,
         uid: auth.uid,
@@ -371,61 +386,302 @@ exports.comprar = onCall(async request => {
         claveQR: crypto.randomBytes(16).toString("hex")
     };
 
-    const refCompra = db.doc(`compras/${codigo}`);
+    return {
+        evento, items, compra, adquiriente,
+        pedidos: items.map(i => ({ tipo: i.tipo, key: i.key, cantidad: i.cantidad }))
+    };
+}
 
-    const refCorreo = db.collection("correos").doc();
+// Dentro de una transacción: revisa el cupo y guarda compra, sillas, factura y correo.
+// (Firestore exige leer todo antes de escribir: aquí primero se lee y luego se escribe.)
+async function registrarCompra(t, { items, compra, adquiriente }){
+
+    const refV = db.doc(`ventas/${compra.eventoId}`);
+
+    const refR = db.doc(`reservas/${compra.eventoId}`);
+
+    const refContador = db.doc("contadores/facturas");
+
+    const v = await t.get(refV);
+
+    const r = await t.get(refR);
+
+    const cont = adquiriente ? await t.get(refContador) : null;
+
+    const ventas = v.exists ? v.data() : vacioVentas();
+
+    const holds = r.exists ? (r.data().holds || {}) : {};
+
+    revisarDisponibilidad(items, ventas, holds, compra.uid);
+
+    compra.fechaCompra = new Date().toISOString();
+
+    compra.factura = null;
+
+    if(adquiriente){
+
+        const valor = (cont.exists ? cont.data().valor : 1000) + 1;
+
+        const numero = `OTFE-${valor}`;
+
+        compra.factura = {
+            numero,
+            fecha: compra.fechaCompra,
+            adquiriente,
+            // CUFE: SHA-384 de los datos de la factura (como lo exige la DIAN)
+            cufe: crypto.createHash("sha384").update(`${numero}|${compra.fechaCompra}|${compra.total}|${adquiriente.documento}|${compra.codigo}`).digest("hex")
+        };
+
+        t.set(refContador, { valor });
+    }
+
+    t.set(refV, aplicarVenta(ventas, items, 1));
+
+    t.set(refR, { holds: holdsVigentes(holds, compra.uid) });
+
+    t.set(db.doc(`compras/${compra.codigo}`), compra);
+
+    t.set(db.collection("correos").doc(), {
+        to: [...new Set([compra.email, adquiriente && adquiriente.correo].filter(Boolean))],
+        message: correoCompra(compra),
+        creado: FieldValue.serverTimestamp()
+    });
+}
+
+// Venta directa sin pasarela: solo el administrador (por ejemplo, en taquilla).
+// Así nadie puede saltarse el pago llamando la función desde el navegador.
+exports.comprar = onCall(async request => {
+
+    const auth = exigirUsuario(request);
+
+    if((await perfil(auth.uid)).role !== "admin") throw falla("permission-denied", "Los pagos se hacen con Wompi");
+
+    const metodo = request.data && request.data.metodo;
+
+    if(!METODOS.includes(metodo)) throw falla("invalid-argument", "Método de pago no válido");
+
+    const datos = await prepararCompra(auth, request.data);
+
+    datos.compra.metodo = metodo;
+
+    await db.runTransaction(t => registrarCompra(t, datos));
+
+    return datos.compra;
+});
+
+
+/* ----- 1. iniciar el pago ----- */
+
+// solo se vuelve a la web propia (o al PC del desarrollador en pruebas)
+function retornoValido(url){
+
+    try{
+
+        const u = new URL(url);
+
+        return u.protocol === "https:" || ["localhost", "127.0.0.1"].includes(u.hostname);
+
+    }catch(e){
+
+        return false;
+    }
+}
+
+exports.iniciarPago = onCall({ secrets: [WOMPI_INTEGRIDAD] }, async request => {
+
+    const auth = exigirUsuario(request);
+
+    const retorno = texto(request.data && request.data.retorno, 300);
+
+    if(!retornoValido(retorno)) throw falla("invalid-argument", "Dirección de retorno inválida");
+
+    const { evento, items, compra, adquiriente, pedidos } = await prepararCompra(auth, request.data);
+
+    const referencia = compra.codigo;
+
+    const monto = compra.total * 100;   // Wompi cobra en centavos
+
+    const expira = Date.now() + MINUTOS_PAGO * 60000;
 
     await db.runTransaction(async t => {
 
-        const refV = db.doc(`ventas/${evento.id}`);
-
         const refR = db.doc(`reservas/${evento.id}`);
 
-        const refContador = db.doc("contadores/facturas");
-
-        const v = await t.get(refV);
+        const v = await t.get(db.doc(`ventas/${evento.id}`));
 
         const r = await t.get(refR);
 
-        const cont = adquiriente ? await t.get(refContador) : null;
-
-        const ventas = v.exists ? v.data() : vacioVentas();
-
         const holds = r.exists ? (r.data().holds || {}) : {};
 
-        revisarDisponibilidad(items, ventas, holds, auth.uid);
+        revisarDisponibilidad(items, v.exists ? v.data() : vacioVentas(), holds, auth.uid);
 
-        if(adquiriente){
+        // mientras paga, sus sillas quedan apartadas un poco más
+        const nuevos = holdsVigentes(holds, auth.uid);
 
-            const valor = (cont.exists ? cont.data().valor : 1000) + 1;
+        items.forEach(i => {
 
-            const numero = `OTFE-${valor}`;
+            if(i.tipo === "general") nuevos[`${i.key}#${auth.uid}`] = { uid: auth.uid, expira, general: i.key, cantidad: i.cantidad };
 
-            compra.factura = {
-                numero,
-                fecha: fechaCompra,
-                adquiriente,
-                // CUFE: SHA-384 de los datos de la factura (como lo exige la DIAN)
-                cufe: crypto.createHash("sha384").update(`${numero}|${fechaCompra}|${compra.total}|${adquiriente.documento}|${codigo}`).digest("hex")
-            };
+            else i.ids.forEach(id => nuevos[id] = { uid: auth.uid, expira });
+        });
 
-            t.set(refContador, { valor });
-        }
+        t.set(refR, { holds: nuevos });
 
-        t.set(refV, aplicarVenta(ventas, items, 1));
-
-        t.set(refR, { holds: holdsVigentes(holds, auth.uid) });
-
-        t.set(refCompra, compra);
-
-        t.set(refCorreo, {
-            to: [...new Set([compra.email, adquiriente && adquiriente.correo].filter(Boolean))],
-            message: correoCompra(compra),
-            creado: FieldValue.serverTimestamp()
+        t.set(db.doc(`pagos/${referencia}`), {
+            estado: "PENDIENTE",
+            uid: auth.uid,
+            eventoId: evento.id,
+            pedidos,
+            compra,
+            adquiriente,
+            monto,
+            creado: new Date().toISOString(),
+            expira
         });
     });
 
-    return compra;
+    // firma de integridad: Wompi comprueba que el monto no fue cambiado en el camino
+    const firma = sha256(`${referencia}${monto}COP${WOMPI_INTEGRIDAD.value().trim()}`);
+
+    const url = new URL("https://checkout.wompi.co/p/");
+
+    url.searchParams.set("public-key", WOMPI_PUBLICA);
+    url.searchParams.set("currency", "COP");
+    url.searchParams.set("amount-in-cents", String(monto));
+    url.searchParams.set("reference", referencia);
+    url.searchParams.set("signature:integrity", firma);
+    url.searchParams.set("redirect-url", `${retorno}${retorno.includes("?") ? "&" : "?"}pago=${encodeURIComponent(referencia)}`);
+    url.searchParams.set("customer-data:email", compra.email);
+    url.searchParams.set("customer-data:full-name", compra.usuario);
+
+    return { referencia, url: url.toString(), expira };
+});
+
+
+/* ----- 2. aplicar el resultado de Wompi ----- */
+
+const NOMBRE_METODO = {
+    CARD: "Tarjeta", NEQUI: "Nequi", PSE: "PSE", DAVIPLATA: "Daviplata",
+    BANCOLOMBIA_TRANSFER: "Bancolombia", BANCOLOMBIA_QR: "QR Bancolombia"
+};
+
+// Se puede llamar varias veces con la misma transacción: solo la primera cambia algo.
+async function aplicarTransaccion(tx){
+
+    if(!tx || !tx.reference) return { estado: "DESCONOCIDO" };
+
+    const ref = db.doc(`pagos/${tx.reference}`);
+
+    const ahoraISO = new Date().toISOString();
+
+    // el evento se lee antes (fuera de la transacción)
+    const previo = await ref.get();
+
+    if(!previo.exists) return { estado: "DESCONOCIDO" };
+
+    const evento = await obtenerEvento(previo.data().eventoId);
+
+    return db.runTransaction(async t => {
+
+        const snap = await t.get(ref);
+
+        const pago = snap.data();
+
+        if(pago.estado !== "PENDIENTE") return { estado: pago.estado, codigo: pago.codigoCompra || null };
+
+        if(tx.status === "PENDING") return { estado: "PENDIENTE" };
+
+        if(tx.status !== "APPROVED"){
+
+            // rechazado, anulado o con error: se liberan sus sillas
+            const refR = db.doc(`reservas/${pago.eventoId}`);
+
+            const r = await t.get(refR);
+
+            if(r.exists) t.set(refR, { holds: holdsVigentes(r.data().holds, pago.uid) });
+
+            t.update(ref, { estado: "RECHAZADO", estadoWompi: tx.status, transaccion: tx.id, actualizado: ahoraISO });
+
+            return { estado: "RECHAZADO" };
+        }
+
+        if(Number(tx.amount_in_cents) !== pago.monto || tx.currency !== "COP"){
+
+            t.update(ref, { estado: "REVISAR", motivo: "El monto pagado no coincide", transaccion: tx.id, actualizado: ahoraISO });
+
+            return { estado: "REVISAR" };
+        }
+
+        const items = construir(evento, pago.pedidos);
+
+        const compra = { ...pago.compra, metodo: `Wompi · ${NOMBRE_METODO[tx.payment_method_type] || tx.payment_method_type || "pago en línea"}`, transaccion: tx.id };
+
+        try{
+
+            await registrarCompra(t, { items, compra, adquiriente: pago.adquiriente });
+
+        }catch(e){
+
+            if(!(e instanceof HttpsError)) throw e;
+
+            // pagó, pero mientras tanto alguien se quedó con la silla: hay que devolver el dinero
+            t.update(ref, { estado: "SIN_CUPO", motivo: e.message, transaccion: tx.id, actualizado: ahoraISO });
+
+            return { estado: "SIN_CUPO", motivo: e.message };
+        }
+
+        t.update(ref, { estado: "APROBADO", codigoCompra: compra.codigo, transaccion: tx.id, actualizado: ahoraISO });
+
+        return { estado: "APROBADO", codigo: compra.codigo };
+    });
+}
+
+// Aviso de Wompi (URL de eventos). Solo se acepta si la firma es auténtica.
+exports.wompiEventos = onRequest({ secrets: [WOMPI_EVENTOS] }, async (req, res) => {
+
+    if(req.method !== "POST"){
+
+        res.status(405).send("");
+
+        return;
+    }
+
+    const ev = req.body || {};
+
+    const firma = ev.signature || {};
+
+    const valor = ruta => ruta.split(".").reduce((o, k) => (o == null ? undefined : o[k]), ev.data);
+
+    const calculada = sha256((firma.properties || []).map(valor).join("") + ev.timestamp + WOMPI_EVENTOS.value().trim());
+
+    if(!firma.checksum || calculada !== String(firma.checksum).toLowerCase()){
+
+        res.status(401).send("firma inválida");
+
+        return;
+    }
+
+    if(ev.event === "transaction.updated" && ev.data && ev.data.transaction){
+
+        await aplicarTransaccion(ev.data.transaction);
+    }
+
+    res.status(200).send("ok");
+});
+
+// Al volver de Wompi: se consulta la transacción directamente a Wompi
+// (no se le cree al navegador) por si el aviso aún no ha llegado.
+exports.verificarPago = onCall(async request => {
+
+    const id = texto(request.data && request.data.id, 80);
+
+    if(!/^[\w-]+$/.test(id)) throw falla("invalid-argument", "Transacción inválida");
+
+    const r = await fetch(`${WOMPI_API}/transactions/${encodeURIComponent(id)}`);
+
+    if(!r.ok) throw falla("not-found", "Wompi no encontró la transacción");
+
+    return aplicarTransaccion((await r.json()).data);
 });
 
 

@@ -153,7 +153,10 @@ Carpeta `functions/`. Todo lo que mueve dinero o da acceso al evento lo hace el 
 
 | Función | Qué hace |
 |---|---|
-| `comprar` | Calcula precios, servicio e IVA con el catálogo oficial, revisa disponibilidad, guarda la compra, genera la factura (consecutivo + CUFE) y deja el correo listo |
+| `iniciarPago` | Calcula precios, servicio e IVA con el catálogo oficial, deja la compra PENDIENTE (colección `pagos`), aparta las sillas 20 min y arma el link de Wompi con la firma de integridad |
+| `wompiEventos` | Recibe el aviso de Wompi (URL de eventos), verifica su firma y confirma o rechaza la compra |
+| `verificarPago` | Al volver de Wompi, consulta la transacción directamente a Wompi y la aplica |
+| `comprar` | Venta directa sin pasarela, solo para el administrador |
 | `reservar` / `liberar` | Aparta las ubicaciones 10 minutos mientras se paga |
 | `eliminarCompra` | Anula una compra (dueño, si nadie ha entrado; o admin) y libera las ubicaciones |
 | `validarBoleta` | Taquilla: revisa el QR con la clave secreta de la compra y la hora del servidor |
@@ -179,3 +182,23 @@ Para probar contra el emulador, abrir la web o la app con `?emulador` en la dire
 **Control de gastos:** límite de gasto por servicio en Firebase (Functions: $20.000 COP/mes),
 presupuesto con alertas de $40.000 COP, máximo 5 instancias por función y limpieza automática
 de copias viejas del código (1 día).
+
+---
+
+## 8. Pagos con Wompi (modo de pruebas)
+
+1. Al pagar, el servidor deja la compra **pendiente** y abre la página de Wompi.
+2. La persona paga (Nequi, PSE, tarjeta, Daviplata, Bancolombia).
+3. Wompi avisa a `wompiEventos` (firma verificada) y, al volver, `verificarPago` también lo consulta.
+   Si el pago fue aprobado se guarda la compra, se marcan las sillas y sale el correo.
+   Si fue rechazado, las sillas quedan libres.
+
+- La llave pública está en `functions/index.js` (`WOMPI_PUBLICA`, no es secreta).
+- Los secretos `WOMPI_INTEGRIDAD` y `WOMPI_EVENTOS` están en Secret Manager:
+  `firebase functions:secrets:set WOMPI_INTEGRIDAD` (y lo mismo con `WOMPI_EVENTOS`).
+- En Wompi → Desarrollo → Programadores → **URL de Eventos** va la dirección de `wompiEventos`
+  que muestra `firebase deploy`.
+- En modo local (`?modo=local`) el pago sigue siendo simulado.
+
+Datos de prueba de Wompi (sandbox): tarjeta `4242 4242 4242 4242` (aprobada) o
+`4111 1111 1111 1111` (rechazada), cualquier fecha futura y CVC; Nequi `3991111111` (aprobado).

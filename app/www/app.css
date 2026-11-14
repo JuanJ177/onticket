@@ -3172,3 +3172,35 @@ body.claro .toast{
     background:var(--surface2);
     font-weight:700;
 }
+
+
+
+/* ----- pago con Wompi ----- */
+
+.wompiApp{
+    display:flex;
+    gap:14px;
+    align-items:center;
+    padding:14px;
+    margin:10px 0 14px;
+    border-radius:16px;
+    border:2px solid var(--brand);
+    background:var(--brandSoft);
+}
+
+.wompiMarca{
+    flex-shrink:0;
+    padding:8px 12px;
+    border-radius:12px;
+    background:#1f2d3d;
+    color:#b0f2a0;
+    font-weight:800;
+    font-size:16px;
+    white-space:nowrap;
+}
+
+.wompiApp p{
+    margin:0;
+    font-size:14px;
+    color:var(--muted);
+}
