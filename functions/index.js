@@ -236,7 +236,7 @@ function resumenCompra(c){
 
     return {
         codigo: c.codigo, evento: c.evento, fecha: c.fecha, lugar: c.lugar,
-        usuario: c.usuario, email: c.email, items: c.items || [],
+        usuario: c.usuario, email: c.email, titular: c.titular || null, items: c.items || [],
         personas: personasCompra(c), ingresos: c.ingresos || 0, ultimoIngreso: c.ultimoIngreso || null
     };
 }
@@ -346,6 +346,38 @@ function limpiarAdquiriente(adq){
     return a;
 }
 
+// ----- perfil del comprador (mismas reglas que validarPerfil en core.js) -----
+
+function edadEn(nacimiento, fecha){
+
+    const n = new Date(nacimiento + "T00:00:00-05:00");
+
+    let edad = fecha.getUTCFullYear() - n.getUTCFullYear();
+
+    const m = fecha.getUTCMonth() - n.getUTCMonth();
+
+    if(m < 0 || (m === 0 && fecha.getUTCDate() < n.getUTCDate())) edad--;
+
+    return edad;
+}
+
+function faltaEnPerfil(p){
+
+    if(!["CC", "CE", "TI", "PP", "PPT"].includes(p.tipoDoc)) return "tipo de documento";
+
+    if(!/^[A-Za-z0-9]{4,15}$/.test(String(p.documento || ""))) return "número de documento";
+
+    if(!/^\+?\d{7,15}$/.test(String(p.celular || ""))) return "celular";
+
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(String(p.nacimiento || ""))) return "fecha de nacimiento";
+
+    if(!String(p.ciudad || "").trim()) return "ciudad";
+
+    if(!p.aceptaDatos) return "autorización de tratamiento de datos";
+
+    return null;
+}
+
 // cuenta boletas individuales (sillas, puestos y general) y palcos completos
 function conteoLimite(items){
 
@@ -412,6 +444,23 @@ async function prepararCompra(auth, datos){
 
     const usuario = await perfil(auth.uid);
 
+    // perfil completo y edad mínima del evento (el administrador está exento)
+    const p = usuario.perfil || {};
+
+    if(usuario.role !== "admin"){
+
+        const falta = faltaEnPerfil(p);
+
+        if(falta) throw falla("failed-precondition", `Completa tu perfil antes de comprar: ${falta}`);
+
+        const f = cat.fechaReal(evento) || new Date();
+
+        if(evento.edadMinima && edadEn(p.nacimiento, f) < evento.edadMinima){
+
+            throw falla("failed-precondition", `Este evento es solo para mayores de ${evento.edadMinima} años.`);
+        }
+    }
+
     // límite por persona y evento (el administrador no tiene límite)
     if(usuario.role !== "admin") await revisarLimiteCompra(auth.uid, evento, items);
 
@@ -436,6 +485,8 @@ async function prepararCompra(auth, datos){
         uid: auth.uid,
         email: auth.token.email,
         usuario: usuario.name || auth.token.name || auth.token.email,
+        // titular: nombre y últimos dígitos del documento (para control de acceso)
+        titular: p.documento ? { nombre: usuario.name || "", tipoDoc: p.tipoDoc || "", docFinal: String(p.documento).slice(-4) } : null,
         // clave secreta de esta boleta: con ella el celular firma el QR dinámico
         claveQR: crypto.randomBytes(16).toString("hex")
     };

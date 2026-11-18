@@ -250,3 +250,14 @@ Datos de prueba de Wompi (sandbox): tarjeta `4242 4242 4242 4242` (aprobada) o
   cada boleta solo entra una vez.
 - **Mis boletas:** arriba las que faltan por usar; las usadas o de eventos pasados van en
   *Experiencias vividas*.
+
+## 11. Perfil del comprador y edad mínima
+
+- **Registro corto** (nombre, correo, clave). Antes de la **primera compra** se pide una sola vez:
+  tipo y número de documento, celular, fecha de nacimiento, ciudad y la **autorización de datos**
+  (Ley 1581, ver `privacidad.html`). Se edita en *Mi cuenta → Mis datos* (web) o *Perfil → Mis datos* (app).
+- El servidor (`prepararCompra`) también lo exige: sin perfil completo no se inicia el pago.
+- **Edad mínima** por evento (campo *Edad mínima* en el panel; Hassam es +18). Un menor no puede comprar.
+- La boleta guarda el **titular**: nombre y solo los **últimos 4 dígitos** del documento
+  (nunca el número completo). Control de acceso lo ve al escanear para comparar con la cédula.
+- Los eventos que ya están en la nube no toman cambios de `data.js`: la edad mínima se pone desde el panel.

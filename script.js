@@ -539,6 +539,7 @@ function renderEventoHero(){
                 </button>
 
                 <span class="slideTag">${ev.categoria}</span>
+                ${ev.edadMinima ? `<span class="slideTag">+${ev.edadMinima}</span>` : ""}
 
                 <h1>${ev.artista}</h1>
 
@@ -1494,6 +1495,25 @@ async function abrirCheckout(){
         return;
     }
 
+    // antes de la primera compra: perfil completo (una sola vez)
+    if(currentUser.role !== "admin" && !perfilCompleto(currentUser)){
+
+        pendienteCheckout = true;
+
+        abrirPerfilWeb(true);
+
+        return;
+    }
+
+    const menor = revisarEdad(eventoActual, currentUser);
+
+    if(menor){
+
+        toast(menor, "fa-id-card");
+
+        return;
+    }
+
     // se apartan las ubicaciones mientras paga
     try{
 
@@ -1650,6 +1670,79 @@ function usarDatosCuenta(){
     $("feNombre").value = currentUser.name;
 
     $("feCorreo").value = currentUser.email;
+
+    // la factura toma los datos del perfil
+    const p = currentUser.perfil;
+
+    if(p){
+
+        if(["CC", "CE", "PP"].includes(p.tipoDoc)) $("feTipoDoc").value = p.tipoDoc;
+
+        $("feDocumento").value = p.documento || "";
+
+        $("feTelefono").value = p.celular || "";
+
+        $("feCiudad").value = p.ciudad || "";
+
+        calcularDV();
+    }
+}
+
+/* ----- perfil del comprador ----- */
+
+function abrirPerfilWeb(paraComprar){
+
+    $("perfilTitulo").innerText = paraComprar ? "Completa tu perfil" : "Mis datos";
+
+    $("perfilSub").style.display = paraComprar ? "" : "none";
+
+    $("btnGuardarPerfil").innerHTML = paraComprar ? '<i class="fa-solid fa-check"></i> Guardar y continuar' : '<i class="fa-solid fa-check"></i> Guardar';
+
+    $("perfilContenido").innerHTML = htmlFormPerfil(currentUser);
+
+    abrirModal("perfilModal");
+}
+
+async function guardarPerfilWeb(){
+
+    const datos = leerFormPerfil(currentUser.perfil);
+
+    const falta = validarPerfil(datos);
+
+    if(falta){
+
+        toast(falta, "fa-triangle-exclamation");
+
+        return;
+    }
+
+    const btn = $("btnGuardarPerfil");
+
+    btn.disabled = true;
+
+    try{
+
+        currentUser = await DB.guardarPerfil(datos);
+
+        cerrarModal("perfilModal");
+
+        toast("Tus datos quedaron guardados", "fa-id-card");
+
+        if(pendienteCheckout){
+
+            pendienteCheckout = false;
+
+            abrirCheckout();
+        }
+
+    }catch(e){
+
+        toast(esc(e.message), "fa-triangle-exclamation");
+
+    }finally{
+
+        btn.disabled = false;
+    }
 }
 
 function validarFactura(){
@@ -2010,6 +2103,7 @@ function mostrarTicket(compra){
         ${compra.fecha ? `<p><i class="fa-regular fa-calendar"></i> ${esc(compra.fecha)}</p>` : ""}
         ${compra.lugar ? `<p><i class="fa-solid fa-location-dot"></i> ${esc(compra.lugar)}</p>` : ""}
         <ul class="ticketItems">${items}</ul>
+        ${compra.titular ? `<p class="ticketTitular"><i class="fa-solid fa-id-card"></i> ${esc(compra.titular.nombre)} · ${esc(docOculto(compra.titular))}</p>` : ""}
         <p class="ticketCode">${esc(compra.codigo)}</p>`;
 
     $("invoiceCard").innerHTML = renderFacturaResumen(compra);
@@ -2772,6 +2866,7 @@ async function abrirCuenta(){
             <button onclick="cerrarModal('cuentaModal'); abrirMisCompras();"><i class="fa-solid fa-ticket"></i> Mis boletas</button>
             ${["admin", "taquilla", "control"].includes(u.role) ? `<button onclick="cerrarModal('cuentaModal'); abrirAdminPanel();"><i class="fa-solid fa-lock"></i> Panel administrativo</button>` : ""}
             ${u.role === "promotor" ? `<button onclick="cerrarModal('cuentaModal'); abrirAdminPanel();"><i class="fa-solid fa-bullhorn"></i> Panel del promotor</button>` : ""}
+            <button onclick="cerrarModal('cuentaModal'); abrirPerfilWeb(false);"><i class="fa-solid fa-id-card"></i> Mis datos${perfilCompleto(u) ? "" : ' <small class="faltaPerfil">Completar</small>'}</button>
             <button onclick="cambiarClave()"><i class="fa-solid fa-key"></i> Cambiar contraseña</button>
             <button onclick="toggleTheme(); abrirCuenta();"><i class="fa-solid ${document.body.classList.contains("dark") ? "fa-sun" : "fa-moon"}"></i> ${document.body.classList.contains("dark") ? "Modo claro" : "Modo oscuro"}</button>
             <button onclick="cerrarModal('cuentaModal'); irASeccion('descargaApp');"><i class="fa-solid fa-mobile-screen-button"></i> Descargar la app</button>

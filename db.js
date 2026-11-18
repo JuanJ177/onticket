@@ -222,7 +222,7 @@ const DB = (() => {
                     await ref.set({ ...datos, creado: firebase.firestore.FieldValue.serverTimestamp() });
                 }
 
-                try{ localStorage.setItem("perfil_" + u.uid, JSON.stringify({ name: datos.name, role: datos.role })); }catch(e){}
+                try{ localStorage.setItem("perfil_" + u.uid, JSON.stringify({ name: datos.name, role: datos.role, perfil: datos.perfil || null })); }catch(e){}
 
             }catch(e){}
 
@@ -231,7 +231,8 @@ const DB = (() => {
                 email: u.email,
                 name: datos.name || u.displayName || u.email.split("@")[0],
                 role: datos.role || "user",
-                verificado: u.emailVerified
+                verificado: u.emailVerified,
+                perfil: datos.perfil || null
             };
         }
 
@@ -538,6 +539,26 @@ const DB = (() => {
                 return ordenar(snap.docs.map(d => d.data()));
             },
 
+            // perfil del comprador (documento, celular, nacimiento...)
+            async guardarPerfil(datos){
+
+                if(!usuario) throw new Error("Debes iniciar sesión");
+
+                await conTiempo(fs.doc(`usuarios/${usuario.uid}`).set({ perfil: datos }, { merge: true }), 10000, "Sin conexión: intenta de nuevo");
+
+                usuario = { ...usuario, perfil: datos };
+
+                try{
+
+                    const previo = JSON.parse(localStorage.getItem("perfil_" + usuario.uid) || "{}");
+
+                    localStorage.setItem("perfil_" + usuario.uid, JSON.stringify({ ...previo, perfil: datos }));
+
+                }catch(e){}
+
+                return usuario;
+            },
+
             /* ----- permisos especiales de compra (soporte) ----- */
 
             async miLimite(eventoId){
@@ -654,7 +675,7 @@ const DB = (() => {
 
         const escribir = (k, v) => localStorage.setItem(k, JSON.stringify(v));
 
-        const publico = u => ({ uid: u.email, email: u.email, name: u.name, role: u.role || "user", verificado: true });
+        const publico = u => ({ uid: u.email, email: u.email, name: u.name, role: u.role || "user", verificado: true, perfil: u.perfil || null });
 
         let usuario = null;
 
@@ -930,7 +951,11 @@ const DB = (() => {
 
                 if(ajeno) throw new Error(`${ajeno.etiqueta} la está comprando otra persona.`);
 
-                const datos = limpiar({ ...compra, uid: usuario.uid, email: usuario.email, usuario: usuario.name });
+                const p = usuario.perfil || {};
+
+                const titular = p.documento ? { nombre: usuario.name || "", tipoDoc: p.tipoDoc || "", docFinal: String(p.documento).slice(-4) } : null;
+
+                const datos = limpiar({ ...compra, uid: usuario.uid, email: usuario.email, usuario: usuario.name, titular });
 
                 escribir("compras", [...leer("compras", []), datos]);
 
@@ -951,6 +976,28 @@ const DB = (() => {
             async miLimite(eventoId){
 
                 return usuario ? (leer("limites", {})[`${eventoId}__${usuario.uid}`] || null) : null;
+            },
+
+            async guardarPerfil(datos){
+
+                if(!usuario) throw new Error("Debes iniciar sesión");
+
+                const users = leer("users", []);
+
+                const u = users.find(x => x.email === usuario.email);
+
+                if(u) u.perfil = datos;
+
+                escribir("users", users);
+
+                usuario = { ...usuario, perfil: datos };
+
+                // la sesión guardada también lleva el perfil (para que sobreviva a recargar)
+                if(localStorage.getItem("currentUser")) localStorage.setItem("currentUser", JSON.stringify(usuario));
+
+                if(sessionStorage.getItem("currentUser")) sessionStorage.setItem("currentUser", JSON.stringify(usuario));
+
+                return usuario;
             },
 
             async listarLimites(){

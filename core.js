@@ -1341,3 +1341,139 @@ function actualizarSellosVivos(){
 
     document.querySelectorAll(".relojVivo").forEach(el => el.textContent = t);
 }
+
+
+
+
+/* ========================================
+   PERFIL DEL COMPRADOR
+   Para registrarse basta nombre, correo y contraseña. Antes de la
+   primera compra se pide el perfil completo (una sola vez): documento,
+   celular, fecha de nacimiento, ciudad y la autorización de datos
+   (Ley 1581 de 2012). El servidor revisa lo mismo antes de cobrar.
+======================================== */
+
+const TIPOS_DOC = [
+    ["CC", "Cédula de ciudadanía"],
+    ["CE", "Cédula de extranjería"],
+    ["TI", "Tarjeta de identidad"],
+    ["PP", "Pasaporte"],
+    ["PPT", "Permiso por protección temporal"]
+];
+
+function edadEn(nacimiento, fecha = new Date()){
+
+    const n = new Date(nacimiento + "T00:00:00");
+
+    let edad = fecha.getFullYear() - n.getFullYear();
+
+    const m = fecha.getMonth() - n.getMonth();
+
+    if(m < 0 || (m === 0 && fecha.getDate() < n.getDate())) edad--;
+
+    return edad;
+}
+
+// Devuelve qué falta o está mal; null si el perfil está completo
+function validarPerfil(p){
+
+    if(!p) return "Completa tu perfil";
+
+    if(!TIPOS_DOC.some(([t]) => t === p.tipoDoc)) return "Elige el tipo de documento";
+
+    if(!/^[A-Za-z0-9]{4,15}$/.test(String(p.documento || ""))) return "Escribe tu número de documento (sin puntos)";
+
+    if(!/^\+?\d{7,15}$/.test(String(p.celular || "").replace(/[\s-]/g, ""))) return "Escribe un celular válido";
+
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(String(p.nacimiento || ""))) return "Escribe tu fecha de nacimiento";
+
+    const edad = edadEn(p.nacimiento);
+
+    if(!(edad >= 14 && edad <= 110)) return "Revisa tu fecha de nacimiento (debes tener al menos 14 años)";
+
+    if(!String(p.ciudad || "").trim()) return "Escribe tu ciudad";
+
+    if(!p.aceptaDatos) return "Debes autorizar el tratamiento de tus datos";
+
+    return null;
+}
+
+function perfilCompleto(u){
+
+    return !!(u && u.perfil && !validarPerfil(u.perfil));
+}
+
+// edad mínima del evento (por ejemplo +18), a la fecha del evento
+function revisarEdad(evento, u){
+
+    if(!evento.edadMinima || !u || !u.perfil || !u.perfil.nacimiento) return null;
+
+    return edadEn(u.perfil.nacimiento, evento.fechaReal || new Date()) < evento.edadMinima
+        ? `Este evento es solo para mayores de ${evento.edadMinima} años.`
+        : null;
+}
+
+// "CC ****4567": lo que se muestra en la boleta y en control de acceso
+function docOculto(t){
+
+    if(!t) return "";
+
+    const doc = String(t.docFinal || t.documento || "");
+
+    return `${t.tipoDoc || ""} ****${doc.slice(-4)}`.trim();
+}
+
+// Formulario (el mismo en la web y en la app). ids: pf*
+function htmlFormPerfil(u){
+
+    const p = (u && u.perfil) || {};
+
+    const politica = `${CONFIG.sitioWeb || ""}privacidad.html`;
+
+    return `
+        <div class="formPerfil">
+            <label>Tipo de documento
+                <select id="pfTipoDoc">
+                    ${TIPOS_DOC.map(([v, t]) => `<option value="${v}" ${(p.tipoDoc || "CC") === v ? "selected" : ""}>${t}</option>`).join("")}
+                </select>
+            </label>
+            <label>Número de documento
+                <input id="pfDocumento" inputmode="numeric" autocomplete="off" value="${esc(p.documento || "")}" placeholder="Sin puntos">
+            </label>
+            <label>Celular (WhatsApp)
+                <input id="pfCelular" type="tel" inputmode="tel" autocomplete="tel" value="${esc(p.celular || "")}" placeholder="Ej: 3001234567">
+            </label>
+            <label>Fecha de nacimiento
+                <input id="pfNacimiento" type="date" value="${esc(p.nacimiento || "")}">
+            </label>
+            <label class="ancho">Ciudad
+                <input id="pfCiudad" autocomplete="address-level2" value="${esc(p.ciudad || "")}" placeholder="Ej: Villavicencio">
+            </label>
+            <label class="checkPerfil ancho">
+                <input type="checkbox" id="pfDatos" ${p.aceptaDatos ? "checked" : ""}>
+                <span>Autorizo a OnTicket el tratamiento de mis datos personales según la <a href="${politica}" target="_blank" rel="noopener">política de tratamiento de datos</a> (Ley 1581 de 2012).</span>
+            </label>
+            <label class="checkPerfil ancho">
+                <input type="checkbox" id="pfPromos" ${p.promociones ? "checked" : ""}>
+                <span>Quiero recibir novedades y promociones de eventos (opcional).</span>
+            </label>
+        </div>`;
+}
+
+function leerFormPerfil(anterior){
+
+    const valor = id => (document.getElementById(id).value || "").trim();
+
+    const acepta = document.getElementById("pfDatos").checked;
+
+    return {
+        tipoDoc: valor("pfTipoDoc"),
+        documento: valor("pfDocumento").replace(/[.\s-]/g, ""),
+        celular: valor("pfCelular").replace(/[\s-]/g, ""),
+        nacimiento: valor("pfNacimiento"),
+        ciudad: valor("pfCiudad"),
+        // se guarda cuándo autorizó (si ya lo había hecho, se conserva la fecha)
+        aceptaDatos: acepta ? ((anterior && anterior.aceptaDatos) || new Date().toISOString()) : null,
+        promociones: document.getElementById("pfPromos").checked
+    };
+}

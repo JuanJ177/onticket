@@ -42,9 +42,9 @@
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
     >
 
-    <link rel="stylesheet" href="style.css?v=15">
+    <link rel="stylesheet" href="style.css?v=16">
 
-    <link rel="stylesheet" href="planos.css?v=15">
+    <link rel="stylesheet" href="planos.css?v=16">
 
 </head>
 
@@ -1014,6 +1014,14 @@
                     <input id="evTitulo" placeholder="Ej: Tour 2027">
                 </label>
 
+                <label>Edad mínima
+                    <select id="evEdad">
+                        <option value="">Todo público</option>
+                        <option value="14">+14</option>
+                        <option value="18">+18</option>
+                    </select>
+                </label>
+
                 <label>Categoría
                     <select id="evCategoria">
                         <option>Conciertos</option>
@@ -1469,6 +1477,29 @@
 
 
 
+<div class="modal" id="perfilModal">
+
+    <div class="modalBox perfilBox">
+
+        <span class="closeModal" onclick="cerrarModal('perfilModal')">✖</span>
+
+        <h2 id="perfilTitulo">Completa tu perfil</h2>
+
+        <p class="modalSub" id="perfilSub">Solo te lo pedimos una vez. Lo necesitamos para tu factura, para verificar tu identidad en la entrada y para avisarte de cambios del evento.</p>
+
+        <div id="perfilContenido"></div>
+
+        <div class="checkoutFooter">
+            <button class="ghostBtn" onclick="cerrarModal('perfilModal')">Cancelar</button>
+            <button class="primaryBtn" id="btnGuardarPerfil" onclick="guardarPerfilWeb()"><i class="fa-solid fa-check"></i> Guardar y continuar</button>
+        </div>
+
+    </div>
+
+</div>
+
+
+
 <div class="modal" id="ticketModal">
 
     <div class="modalBox large">
@@ -1535,14 +1566,14 @@
 <!-- Lector de QR para la taquilla -->
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 
-<script src="firebase-config.js?v=15"></script>
-<script src="data.js?v=15"></script>
-<script src="planos.js?v=15"></script>
-<script src="core.js?v=15"></script>
-<script src="db.js?v=15"></script>
-<script src="script.js?v=15"></script>
-<script src="editor-plano.js?v=15"></script>
-<script src="admin.js?v=15"></script>
+<script src="firebase-config.js?v=16"></script>
+<script src="data.js?v=16"></script>
+<script src="planos.js?v=16"></script>
+<script src="core.js?v=16"></script>
+<script src="db.js?v=16"></script>
+<script src="script.js?v=16"></script>
+<script src="editor-plano.js?v=16"></script>
+<script src="admin.js?v=16"></script>
 
 </body>
 </html>

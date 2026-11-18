@@ -1,13 +1,13 @@
 {
-  "codigo": 13,
-  "nombre": "1.7.2",
+  "codigo": 14,
+  "nombre": "1.7.3",
   "notas": [
+    "Mis datos: completa tu perfil una sola vez antes de tu primera compra",
+    "Tu boleta muestra el titular y los últimos dígitos de tu documento",
+    "Eventos solo para mayores de edad (+18)",
     "Tus boletas abren al instante aunque no tengas señal",
-    "Sello en vivo en el QR contra fotos desde otro celular",
-    "Arreglado el botón para volver atrás",
-    "Mis boletas: las ya usadas pasan a Experiencias vividas",
     "Límite de compra por evento: 10 boletas y 2 palcos"
   ],
   "apk": "descargas/OnTicket.apk",
-  "publicada": "2026-11-18T00:12:11.742Z"
+  "publicada": "2026-11-18T00:43:27.455Z"
 }

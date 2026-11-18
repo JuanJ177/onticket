@@ -171,6 +171,7 @@ const EVENTOS = [
         imagen: "img/hassam.jpg",
         descripcion: "Después de 23 años con sus personajes, Hassam se sube al escenario sin caracterizaciones ni máscaras: un show de stand up más auténtico, mordaz y sarcástico para sobrevivir a estos tiempos. Sin personajes y sin filtro. Solo mayores de 18 años.",
         destacado: true,
+        edadMinima: 18,
         // evento real: precios de la boletería oficial (sin servicio)
         precios: { vip: 110000, platea: 100000, luneta: 90000 },
         oficial: {

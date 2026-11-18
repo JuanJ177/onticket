@@ -5297,3 +5297,9 @@ body.dark .usadaTag{
 .permisosForm input, .permisosForm select{ padding:10px; border-radius:10px; border:1px solid var(--border); background:var(--surface2); color:var(--text); }
 .permisoFila{ display:flex; gap:12px; align-items:center; justify-content:space-between; padding:10px 0; border-top:1px solid var(--border); font-size:14px; }
 .permisoFila small{ color:var(--muted); }
+
+
+/* perfil del comprador */
+.perfilBox{ width:560px; }
+.ticketTitular{ font-weight:600; }
+.faltaPerfil{ margin-left:auto; background:#fff4e5; color:#92400e; padding:2px 8px; border-radius:8px; font-size:11px; font-weight:700; }

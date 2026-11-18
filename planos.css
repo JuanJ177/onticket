@@ -189,3 +189,14 @@
 @keyframes selloFondo{ to{ background-position:300% 0; } }
 @keyframes selloBrillo{ to{ left:110%; } }
 @keyframes selloPulso{ 50%{ opacity:0.25; transform:scale(0.7); } }
+
+
+/* formulario del perfil del comprador (web y app) */
+.formPerfil{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0; text-align:left; }
+.formPerfil label{ display:flex; flex-direction:column; gap:6px; font-size:13px; font-weight:600; color:var(--muted); }
+.formPerfil .ancho{ grid-column:1 / -1; }
+.formPerfil input:not([type=checkbox]), .formPerfil select{ width:100%; padding:12px; border-radius:12px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-size:15px; font-family:inherit; }
+.formPerfil .checkPerfil{ flex-direction:row; align-items:flex-start; gap:10px; font-weight:500; line-height:1.4; }
+.formPerfil .checkPerfil input{ margin-top:3px; width:18px; height:18px; flex-shrink:0; accent-color:var(--brand); }
+.formPerfil a{ color:var(--brand); font-weight:700; }
+@media (max-width:520px){ .formPerfil{ grid-template-columns:1fr; } }

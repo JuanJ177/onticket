@@ -435,6 +435,7 @@ function abrirEvento(id){
         <div class="eventoCuerpo">
 
             <span class="tag">${ev.categoria}</span>
+            ${ev.edadMinima ? `<span class="tag">+${ev.edadMinima}</span>` : ""}
 
             <h1>${ev.artista}</h1>
 
@@ -1141,6 +1142,23 @@ async function abrirCheckout(){
     if(!usuario.verificado){
 
         abrirVerificacion(() => abrirCheckout());
+
+        return;
+    }
+
+    // antes de la primera compra: perfil completo (una sola vez)
+    if(usuario.role !== "admin" && !perfilCompleto(usuario)){
+
+        abrirPerfilApp(true);
+
+        return;
+    }
+
+    const menor = revisarEdad(evento, usuario);
+
+    if(menor){
+
+        toast(esc(menor), "fa-id-card");
 
         return;
     }
@@ -1862,6 +1880,60 @@ async function enviarAuth(){
 
 
 /* ========================================
+   PERFIL DEL COMPRADOR
+======================================== */
+
+let perfilParaComprar = false;
+
+function abrirPerfilApp(paraComprar){
+
+    perfilParaComprar = paraComprar;
+
+    abrirSheet(`
+        <h2>${paraComprar ? "Completa tu perfil" : "Mis datos"}</h2>
+        ${paraComprar ? `<p class="sheetSub">Solo te lo pedimos una vez: para tu factura, para verificar tu identidad en la entrada y para avisarte de cambios del evento.</p>` : ""}
+        ${htmlFormPerfil(usuario)}
+        <button class="btnPrimario ancho" id="btnPerfilApp" onclick="guardarPerfilApp()"><i class="fa-solid fa-check"></i> ${paraComprar ? "Guardar y continuar" : "Guardar"}</button>`);
+}
+
+async function guardarPerfilApp(){
+
+    const datos = leerFormPerfil(usuario.perfil);
+
+    const falta = validarPerfil(datos);
+
+    if(falta){
+
+        toast(esc(falta), "fa-triangle-exclamation");
+
+        return;
+    }
+
+    $("btnPerfilApp").disabled = true;
+
+    try{
+
+        usuario = await DB.guardarPerfil(datos);
+
+        alCambiarUsuario();
+
+        toast("Tus datos quedaron guardados", "fa-id-card");
+
+        if(perfilParaComprar) cerrarSheet(() => abrirCheckout());
+
+        else cerrarSheet();
+
+    }catch(e){
+
+        toast(esc(e.message), "fa-triangle-exclamation");
+
+        $("btnPerfilApp").disabled = false;
+    }
+}
+
+
+
+/* ========================================
    MIS BOLETAS
 ======================================== */
 
@@ -2023,6 +2095,7 @@ function abrirBoleta(codigo){
                 <div><small>Fecha</small><b>${esc(ev ? ev.fecha : c.fecha)}</b></div>
                 <div><small>Hora</small><b>${esc(ev ? ev.hora : "")}</b></div>
                 <div class="ancho"><small>Lugar</small><b>${esc(c.lugar || "")}</b></div>
+                ${c.titular ? `<div class="ancho"><small>Titular</small><b>${esc(c.titular.nombre)} · ${esc(docOculto(c.titular))}</b></div>` : ""}
             </div>
 
             <div class="perforado"></div>
@@ -2259,6 +2332,8 @@ function renderPerfil(){
 function opcionesPerfil(oscuro){
 
     return `
+        ${usuario ? `
+        <button class="opcion" onclick="abrirPerfilApp(false)"><i class="fa-solid fa-id-card"></i> Mis datos ${perfilCompleto(usuario) ? `<small class="datoPerfil">${esc(docOculto(usuario.perfil))}</small>` : '<small class="faltaPerfil">Completar</small>'}</button>` : ""}
         <div class="opciones">
             <div class="opcion temaFila">
                 <i class="fa-solid fa-circle-half-stroke"></i> Tema
@@ -2523,7 +2598,7 @@ async function leerBoleta(texto){
     const detalle = c ? `
         <div class="resDatos">
             <b>${esc(c.evento)}</b>
-            <small>${esc(c.usuario || c.email || "")}</small>
+            <small>${esc(c.usuario || c.email || "")}${c.titular ? " · " + esc(docOculto(c.titular)) : ""}</small>
             <small>${(c.items || []).map(i => esc(i.etiqueta)).join(" · ")}</small>
         </div>` : "";
 

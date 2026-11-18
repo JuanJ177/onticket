@@ -346,6 +346,8 @@ function editarEvento(id){
     $("evDescripcion").value = ev ? ev.descripcion || "" : "";
     $("evVideo").value = ev ? ev.video || "" : "";
     $("evDestacado").checked = ev ? !!ev.destacado : true;
+
+    $("evEdad").value = ev && ev.edadMinima ? String(ev.edadMinima) : "";
     $("evVisible").checked = ev ? ev.visible !== false : true;
 
     aficheEditor = ev ? ev.imagen : null;
@@ -537,6 +539,7 @@ async function guardarEventoEditor(){
         artista,
         titulo: $("evTitulo").value.trim(),
         categoria: $("evCategoria").value,
+        edadMinima: Number($("evEdad").value) || null,
         lugar: nuevo ? "propio" : lugar,
         fechaISO: `${fecha}T${$("evHora").value || "20:00"}`,
         descripcion: $("evDescripcion").value.trim(),
@@ -1661,7 +1664,7 @@ function htmlResultado(r){
         <div class="resDetalle">
             <b>${esc(c.evento)}</b>
             <small>${esc(c.fecha || "")}</small>
-            <small><i class="fa-solid fa-user"></i> ${esc(c.usuario || c.email || "")}</small>
+            <small><i class="fa-solid fa-user"></i> ${esc(c.usuario || c.email || "")}${c.titular ? " · " + esc(docOculto(c.titular)) : ""}</small>
             <ul>${(c.items || []).map(i => `<li>${esc(i.etiqueta)}</li>`).join("")}</ul>
             <span class="mono">${esc(c.codigo)}</span>
         </div>` : "";
