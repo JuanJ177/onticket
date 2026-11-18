@@ -448,6 +448,11 @@ function abrirEvento(id){
 
     planoActual = planoDe(evento);
 
+    // permiso especial de soporte para este cliente (si lo tiene)
+    limiteEvento = null;
+
+    if(currentUser) DB.miLimite(evento.id).then(l => { if(eventoActual && eventoActual.id === evento.id) limiteEvento = l; }).catch(() => {});
+
     ventasActual = {};
 
     reservasActual = { holds: {} };
@@ -1191,7 +1196,7 @@ function togglePuesto(n){
 
 function agregarPalcoCompleto(){
 
-    agregarAlCarrito(itemPalco(eventoActual, palcoAbierto));
+    if(agregarAlCarrito(itemPalco(eventoActual, palcoAbierto)) === false) return;
 
     cerrarModal("palcoModal");
 }
@@ -1269,9 +1274,16 @@ function cambiarCantidad(d){
 
 function agregarGeneral(){
 
+    const anterior = carrito.find(i => i.key === generalAbierta.id);
+
     carrito = carrito.filter(i => i.key !== generalAbierta.id);
 
-    agregarAlCarrito(itemGeneral(eventoActual, generalAbierta, cantidadGeneral));
+    if(agregarAlCarrito(itemGeneral(eventoActual, generalAbierta, cantidadGeneral)) === false){
+
+        if(anterior) carrito.push(anterior);
+
+        return;
+    }
 
     cerrarModal("generalModal");
 }
@@ -1282,7 +1294,20 @@ function agregarGeneral(){
    CARRITO
 ======================================== */
 
+let limiteEvento = null;
+
 function agregarAlCarrito(item){
+
+    const aviso = revisarLimite(eventoActual, carrito, comprasUsuario, limiteEvento, item, currentUser);
+
+    if(aviso){
+
+        mostrarEstadoPago('<i class="fa-solid fa-hand"></i>', "Límite de compra", esc(aviso), `
+            <a class="primaryBtn" href="${enlaceSoporte(eventoActual)}" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i> Escribir a soporte</a>
+            <button class="ghostBtn" onclick="cerrarModal('pagoModal')">Entendido</button>`);
+
+        return false;
+    }
 
     carrito.push(item);
 
@@ -2073,6 +2098,7 @@ function htmlZonaQR(compra, recien){
             </svg>
             <div id="qrTimer">00:30</div>
         </div>
+        ${htmlSelloVivo(currentUser ? currentUser.name : "")}
         <p class="qrNote"><i class="fa-solid fa-shield-halved"></i> QR dinámico: cambia cada 30 s y se oculta si sales de la ventana. Una captura no sirve para entrar.</p>`;
 }
 
@@ -2185,6 +2211,8 @@ function iniciarTimerQR(){
 
 function actualizarTimer(){
 
+    actualizarSellosVivos();
+
     const restante = segundosQR();
 
     if(!$("qrTimer")) return;
@@ -2272,7 +2300,10 @@ async function abrirMisCompras(){
         return;
     }
 
-    $("misCompras").innerHTML = `<div class="emptyState"><i class="fa-solid fa-spinner fa-spin"></i><p>Cargando tus boletas...</p></div>`;
+    // primero las guardadas en este navegador; luego las del servidor si hay señal
+    comprasUsuario = comprasUsuario.length ? comprasUsuario : leerBoletasWeb();
+
+    renderCompras();
 
     abrirModal("misComprasModal");
 
@@ -2280,13 +2311,31 @@ async function abrirMisCompras(){
 
         comprasUsuario = await DB.misCompras();
 
+        guardarBoletasWeb();
+
     }catch(e){
 
-        toast("No se pudieron cargar tus boletas", "fa-triangle-exclamation");
+        if(comprasUsuario.length) toast("Sin conexión: estas son tus boletas guardadas", "fa-wifi");
+
+        else toast("No se pudieron cargar tus boletas", "fa-triangle-exclamation");
     }
 
     renderCompras();
 }
+
+const claveBoletasWeb = () => "boletasWeb_" + (currentUser ? currentUser.uid : "");
+
+function leerBoletasWeb(){
+
+    try{ return JSON.parse(localStorage.getItem(claveBoletasWeb()) || "[]"); }catch(e){ return []; }
+}
+
+function guardarBoletasWeb(){
+
+    try{ localStorage.setItem(claveBoletasWeb(), JSON.stringify(comprasUsuario)); }catch(e){}
+}
+
+let verVividasWeb = false;
 
 function renderCompras(){
 
@@ -2303,7 +2352,7 @@ function renderCompras(){
         return;
     }
 
-    cont.innerHTML = comprasUsuario.map((compra, index) => {
+    const tarjeta = ([compra, index]) => {
 
         const ev = getEvento(compra.eventoId);
 
@@ -2332,8 +2381,26 @@ function renderCompras(){
             </div>
 
         </div>`;
+    };
 
-    }).join("");
+    // arriba solo lo que falta por usar; lo ya vivido va aparte, plegado
+    const conIndice = comprasUsuario.map((c, i) => [c, i]);
+
+    const activas = conIndice.filter(([c]) => !esExperienciaVivida(c));
+
+    const vividas = conIndice.filter(([c]) => esExperienciaVivida(c));
+
+    cont.innerHTML = (activas.length ? activas.map(tarjeta).join("") : `
+        <div class="emptyState">
+            <i class="fa-solid fa-ticket"></i>
+            <p>No tienes boletas por usar. ¡Tu próxima experiencia te espera!</p>
+        </div>`) +
+        (vividas.length ? `
+        <button class="toggleVividas" onclick="verVividasWeb = !verVividasWeb; renderCompras();">
+            <i class="fa-solid fa-clock-rotate-left"></i> Experiencias vividas (${vividas.length})
+            <i class="fa-solid fa-chevron-${verVividasWeb ? "up" : "down"}"></i>
+        </button>
+        ${verVividasWeb ? `<div class="listaVividas">${vividas.map(tarjeta).join("")}</div>` : ""}` : "");
 }
 
 function verCompra(index){
@@ -2678,7 +2745,7 @@ async function abrirCuenta(){
 
     const u = currentUser;
 
-    const roles = { admin: "Administrador", taquilla: "Taquilla", promotor: "Promotor", user: "Cliente" };
+    const roles = { admin: "Administrador", taquilla: "Control de acceso", control: "Control de acceso", promotor: "Promotor", user: "Cliente" };
 
     $("cuentaContenido").innerHTML = `
         <div class="cuentaCabeza">
@@ -2703,7 +2770,7 @@ async function abrirCuenta(){
 
         <div class="cuentaOpciones">
             <button onclick="cerrarModal('cuentaModal'); abrirMisCompras();"><i class="fa-solid fa-ticket"></i> Mis boletas</button>
-            ${["admin", "taquilla"].includes(u.role) ? `<button onclick="cerrarModal('cuentaModal'); abrirAdminPanel();"><i class="fa-solid fa-lock"></i> Panel administrativo</button>` : ""}
+            ${["admin", "taquilla", "control"].includes(u.role) ? `<button onclick="cerrarModal('cuentaModal'); abrirAdminPanel();"><i class="fa-solid fa-lock"></i> Panel administrativo</button>` : ""}
             ${u.role === "promotor" ? `<button onclick="cerrarModal('cuentaModal'); abrirAdminPanel();"><i class="fa-solid fa-bullhorn"></i> Panel del promotor</button>` : ""}
             <button onclick="cambiarClave()"><i class="fa-solid fa-key"></i> Cambiar contraseña</button>
             <button onclick="toggleTheme(); abrirCuenta();"><i class="fa-solid ${document.body.classList.contains("dark") ? "fa-sun" : "fa-moon"}"></i> ${document.body.classList.contains("dark") ? "Modo claro" : "Modo oscuro"}</button>
@@ -2774,11 +2841,13 @@ function actualizarUsuario(){
 
         btnLogin.onclick = abrirCuenta;
 
-        adminBtn.style.display = ["admin", "taquilla", "promotor"].includes(currentUser.role) ? "flex" : "none";
+        adminBtn.style.display = ["admin", "taquilla", "control", "promotor"].includes(currentUser.role) ? "flex" : "none";
 
         adminBtn.innerHTML = currentUser.role === "promotor"
             ? '<i class="fa-solid fa-bullhorn"></i> Mi panel'
-            : '<i class="fa-solid fa-lock"></i> Admin';
+            : ["taquilla", "control"].includes(currentUser.role)
+                ? '<i class="fa-solid fa-qrcode"></i> Control de acceso'
+                : '<i class="fa-solid fa-lock"></i> Admin';
 
         $("bannerVerificar").classList.toggle("show", !currentUser.verificado);
 
@@ -2829,6 +2898,10 @@ DB.onUsuario(usuario => {
     actualizarUsuario();
 
     recalcularEstado();
+
+    comprasUsuario = usuario ? leerBoletasWeb() : [];
+
+    if(usuario) DB.misCompras().then(c => { comprasUsuario = c; guardarBoletasWeb(); }).catch(() => {});
 
     resolverUsuarioListo();
 });

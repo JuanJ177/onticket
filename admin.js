@@ -23,12 +23,12 @@ async function abrirAdminPanel(){
     const rol = currentUser && currentUser.role;
 
     // taquilla: solo escanea. Promotor: solo sus eventos y sus ventas.
-    const permitidas = rol === "taquilla" ? ["taquilla"] : rol === "promotor" ? ["eventos", "ventas"] : null;
+    const permitidas = ["taquilla", "control"].includes(rol) ? ["taquilla"] : rol === "promotor" ? ["eventos", "ventas"] : null;
 
     document.querySelectorAll("#adminTabs button").forEach(b =>
         b.style.display = permitidas && !permitidas.includes(b.dataset.tab) ? "none" : "");
 
-    $("adminTitulo").innerText = rol === "promotor" ? "Panel del promotor" : "Panel Administrativo";
+    $("adminTitulo").innerText = rol === "promotor" ? "Panel del promotor" : ["taquilla", "control"].includes(rol) ? "Control de acceso" : "Panel Administrativo";
 
     const inicial = permitidas ? (permitidas.includes(adminTabActual) ? adminTabActual : permitidas[0]) : adminTabActual;
 
@@ -296,6 +296,11 @@ async function renderEventosAdmin(){
         </article>`;
 
     }).join("") || `<p class="adminSubtitle">Aún no tienes eventos. Toca <b>Nuevo evento</b> para crear el primero.</p>`;
+
+    // solo el administrador da permisos especiales de compra
+    $("permisosCompra").style.display = promotor ? "none" : "";
+
+    if(!promotor) renderPermisosCompra();
 }
 
 function editarEvento(id){
@@ -611,6 +616,84 @@ async function guardarEventoEditor(){
     }
 }
 
+/* ----- permisos especiales de compra (soporte) -----
+   Un cliente puede comprar hasta CONFIG.maxBoletasEvento boletas y
+   CONFIG.maxPalcosEvento palcos por evento. Si soporte lo aprueba
+   (por ejemplo, alguien que quiere 3 palcos), aquí se le sube el límite. */
+
+async function renderPermisosCompra(){
+
+    $("permisoEvento").innerHTML = eventosPublicos().map(e => `<option value="${e.id}">${esc(e.artista)} · ${esc(e.titulo)}</option>`).join("");
+
+    let lista = [];
+
+    try{ lista = await DB.listarLimites(); }catch(e){}
+
+    $("listaPermisos").innerHTML = lista.map(p => {
+
+        const ev = getEvento(p.eventoId);
+
+        return `
+        <div class="permisoFila">
+            <div>
+                <b>${esc(p.correo)}</b> · ${esc(ev ? ev.artista : p.eventoId)}
+                <br><small>Hasta ${p.boletas} boletas y ${p.palcos} palcos${p.nota ? " · " + esc(p.nota) : ""}</small>
+            </div>
+            <button class="ghostBtn danger" onclick="quitarPermisoCompra('${esc(p.id)}')"><i class="fa-regular fa-trash-can"></i></button>
+        </div>`;
+
+    }).join("") || `<p class="adminSubtitle">No hay permisos especiales. Todos compran con el límite normal: ${CONFIG.maxBoletasEvento} boletas y ${CONFIG.maxPalcosEvento} palcos por evento.</p>`;
+}
+
+async function guardarPermisoCompra(){
+
+    const correo = $("permisoCorreo").value.trim();
+
+    const boletas = Math.max(0, Math.floor(Number($("permisoBoletas").value)));
+
+    const palcos = Math.max(0, Math.floor(Number($("permisoPalcos").value)));
+
+    if(!correo){
+
+        toast("Escribe el correo del cliente", "fa-triangle-exclamation");
+
+        return;
+    }
+
+    try{
+
+        await DB.guardarLimite($("permisoEvento").value, correo, boletas, palcos, $("permisoNota").value.trim());
+
+        $("permisoCorreo").value = "";
+
+        $("permisoNota").value = "";
+
+        toast(`Listo: ${esc(correo)} puede comprar hasta ${boletas} boletas y ${palcos} palcos en ese evento`);
+
+        renderPermisosCompra();
+
+    }catch(e){
+
+        toast(esc(e.message), "fa-triangle-exclamation");
+    }
+}
+
+async function quitarPermisoCompra(id){
+
+    if(!confirm("¿Quitar este permiso? El cliente vuelve al límite normal.")) return;
+
+    try{
+
+        await DB.eliminarLimite(id);
+
+        renderPermisosCompra();
+
+    }catch(e){
+
+        toast(esc(e.message), "fa-triangle-exclamation");
+    }
+}
+
 /* ----- aprobación de eventos de promotores (solo admin) ----- */
 
 async function aprobarEvento(id){
@@ -866,7 +949,7 @@ function renderKpis(){
             <span>${statsComprasEvento.length} compra${statsComprasEvento.length === 1 ? "" : "s"} real${statsComprasEvento.length === 1 ? "" : "es"}</span>
         </div>
         <div class="kpi">
-            <small>Ingresaron (taquilla)</small>
+            <small>Ingresaron (control de acceso)</small>
             <b>${ingresaron} / ${personas}</b>
             <span>personas con boleta real</span>
         </div>`;
@@ -1141,7 +1224,7 @@ function renderCalor(){
     if(flujo) textoFlujo();
 
     $("calorNota").innerHTML = flujo
-        ? `<i class="fa-solid fa-circle-info"></i> Los ingresos registrados en taquilla se muestran tal cual; el resto del público se simula según la hora para visualizar la aglomeración.`
+        ? `<i class="fa-solid fa-circle-info"></i> Los ingresos registrados en control de acceso se muestran tal cual; el resto del público se simula según la hora para visualizar la aglomeración.`
         : `<i class="fa-solid fa-circle-info"></i> Incluye las ubicaciones vendidas de demostración y las compras reales.`;
 }
 

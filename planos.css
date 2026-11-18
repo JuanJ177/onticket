@@ -177,3 +177,15 @@
 .seccion.sold path{ fill:#2c2e36; stroke:#3a3d47; }
 .seccion.sold text{ fill:#6b6e7a; }
 .seccion.dim{ opacity:0.18; pointer-events:none; }
+
+
+/* sello en vivo de la boleta (contra fotos) */
+.selloVivo{ position:relative; overflow:hidden; display:flex; gap:8px; align-items:center; justify-content:center; margin:10px auto 2px; padding:8px 14px; max-width:300px; border-radius:12px; background:linear-gradient(90deg, #ff6600, #ff9a3d, #d63ee8, #ff6600); background-size:300% 100%; animation:selloFondo 6s linear infinite; color:white; font-size:14px; }
+.selloVivo .selloBrillo{ position:absolute; top:0; bottom:0; width:40%; left:-40%; background:linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent); animation:selloBrillo 2.2s ease-in-out infinite; pointer-events:none; }
+.selloVivo .selloPunto{ width:9px; height:9px; border-radius:50%; background:white; animation:selloPulso 1s ease-in-out infinite; }
+.selloVivo .relojVivo{ font-variant-numeric:tabular-nums; font-weight:800; letter-spacing:1px; }
+.selloVivo .selloNombre{ opacity:0.92; font-weight:600; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.selloAyuda{ display:block; text-align:center; font-size:11px; opacity:0.7; margin-bottom:6px; }
+@keyframes selloFondo{ to{ background-position:300% 0; } }
+@keyframes selloBrillo{ to{ left:110%; } }
+@keyframes selloPulso{ 50%{ opacity:0.25; transform:scale(0.7); } }

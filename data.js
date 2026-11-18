@@ -23,7 +23,16 @@ const CONFIG = {
 
     // Eventos de demostración: si la fecha ya pasó, se corre al año siguiente
     // (así los eventos de ejemplo siguen vigentes sin tener que cambiarlos)
-    moverEventosPasados: true
+    moverEventosPasados: true,
+
+    // Límite por persona y por evento (el administrador no tiene límite).
+    // Para comprar más, soporte puede dar un permiso especial a ese cliente.
+    maxBoletasEvento: 10,     // boletas individuales: sillas, puestos de palco y general
+    maxPalcosEvento: 2,       // palcos completos de 10 personas
+
+    // Contacto de soporte (WhatsApp sin "+" ni espacios)
+    soporteWhatsApp: "573205557788",
+    soporteCorreo: "soporte@onticket.com"
 };
 
 

@@ -42,9 +42,9 @@
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
     >
 
-    <link rel="stylesheet" href="style.css?v=14">
+    <link rel="stylesheet" href="style.css?v=15">
 
-    <link rel="stylesheet" href="planos.css?v=14">
+    <link rel="stylesheet" href="planos.css?v=15">
 
 </head>
 
@@ -552,7 +552,7 @@
 
                 <button data-tab="eventos" onclick="adminTab('eventos')"><i class="fa-solid fa-calendar-plus"></i> Eventos</button>
 
-                <button data-tab="taquilla" onclick="adminTab('taquilla')"><i class="fa-solid fa-qrcode"></i> Taquilla</button>
+                <button data-tab="taquilla" onclick="adminTab('taquilla')"><i class="fa-solid fa-qrcode"></i> Control de acceso</button>
 
             </div>
 
@@ -734,6 +734,25 @@
             </div>
 
             <div class="eventosAdmin" id="eventosAdmin"></div>
+
+            <section class="permisosCompra" id="permisosCompra">
+
+                <h3><i class="fa-solid fa-user-shield"></i> Permisos especiales de compra</h3>
+
+                <p class="adminSubtitle">Cada cliente puede comprar hasta 10 boletas individuales y 2 palcos por evento. Cuando soporte aprueba más (por ejemplo, alguien que quiere 3 palcos), súbele el límite aquí.</p>
+
+                <div class="permisosForm">
+                    <label>Evento<select id="permisoEvento"></select></label>
+                    <label>Correo del cliente<input id="permisoCorreo" type="email" placeholder="cliente@correo.com"></label>
+                    <label>Boletas<input id="permisoBoletas" type="number" min="0" value="20"></label>
+                    <label>Palcos<input id="permisoPalcos" type="number" min="0" value="3"></label>
+                    <label>Nota (opcional)<input id="permisoNota" placeholder="Ej: aprobado por WhatsApp"></label>
+                    <button class="primaryBtn" onclick="guardarPermisoCompra()"><i class="fa-solid fa-check"></i> Dar permiso</button>
+                </div>
+
+                <div id="listaPermisos"></div>
+
+            </section>
 
         </div>
 
@@ -1516,14 +1535,14 @@
 <!-- Lector de QR para la taquilla -->
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 
-<script src="firebase-config.js?v=14"></script>
-<script src="data.js?v=14"></script>
-<script src="planos.js?v=14"></script>
-<script src="core.js?v=14"></script>
-<script src="db.js?v=14"></script>
-<script src="script.js?v=14"></script>
-<script src="editor-plano.js?v=14"></script>
-<script src="admin.js?v=14"></script>
+<script src="firebase-config.js?v=15"></script>
+<script src="data.js?v=15"></script>
+<script src="planos.js?v=15"></script>
+<script src="core.js?v=15"></script>
+<script src="db.js?v=15"></script>
+<script src="script.js?v=15"></script>
+<script src="editor-plano.js?v=15"></script>
+<script src="admin.js?v=15"></script>
 
 </body>
 </html>

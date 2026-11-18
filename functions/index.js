@@ -88,7 +88,7 @@ async function exigirStaff(request){
 
     const p = await perfil(auth.uid);
 
-    if(!["admin", "taquilla"].includes(p.role)) throw falla("permission-denied", "Solo el personal de taquilla puede validar boletas");
+    if(!["admin", "taquilla", "control"].includes(p.role)) throw falla("permission-denied", "Solo el personal de control de acceso puede validar boletas");
 
     return { auth, perfil: p };
 }
@@ -346,6 +346,53 @@ function limpiarAdquiriente(adq){
     return a;
 }
 
+// cuenta boletas individuales (sillas, puestos y general) y palcos completos
+function conteoLimite(items){
+
+    return items.reduce((s, i) => {
+
+        if(i.tipo === "palco") s.palcos += i.cantidad || 1;
+
+        else s.boletas += i.tipo === "general" ? i.cantidad : 1;
+
+        return s;
+
+    }, { boletas: 0, palcos: 0 });
+}
+
+// Hasta CONFIG.maxBoletasEvento boletas y CONFIG.maxPalcosEvento palcos por evento,
+// sumando lo que ya compró. Soporte puede subirlo con un permiso en "limites".
+async function revisarLimiteCompra(uid, evento, items){
+
+    const permiso = await db.doc(`limites/${evento.id}__${uid}`).get();
+
+    const p = permiso.exists ? permiso.data() : {};
+
+    const lim = {
+        boletas: p.boletas >= 0 ? p.boletas : cat.CONFIG.maxBoletasEvento,
+        palcos: p.palcos >= 0 ? p.palcos : cat.CONFIG.maxPalcosEvento
+    };
+
+    const previas = (await db.collection("compras").where("uid", "==", uid).where("eventoId", "==", evento.id).get())
+        .docs.flatMap(d => d.data().items || []);
+
+    const antes = conteoLimite(previas);
+
+    const total = conteoLimite([...previas, ...items]);
+
+    const ya = n => n ? ` (ya tienes ${n})` : "";
+
+    if(total.palcos > lim.palcos){
+
+        throw falla("resource-exhausted", `Solo puedes comprar ${lim.palcos} ${lim.palcos === 1 ? "palco completo" : "palcos completos"} para este evento${ya(antes.palcos)}. Si deseas comprar más, contacta a soporte.`);
+    }
+
+    if(total.boletas > lim.boletas){
+
+        throw falla("resource-exhausted", `Solo puedes comprar ${lim.boletas} boletas individuales para este evento${ya(antes.boletas)}. Si deseas comprar más, contacta a soporte.`);
+    }
+}
+
 // arma la compra con los precios oficiales (nunca los que manda el cliente)
 async function prepararCompra(auth, datos){
 
@@ -364,6 +411,9 @@ async function prepararCompra(auth, datos){
     const adquiriente = limpiarAdquiriente(factura);
 
     const usuario = await perfil(auth.uid);
+
+    // límite por persona y evento (el administrador no tiene límite)
+    if(usuario.role !== "admin") await revisarLimiteCompra(auth.uid, evento, items);
 
     const lugar = cat.lugarDe(evento);
 

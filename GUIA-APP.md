@@ -230,3 +230,23 @@ Datos de prueba de Wompi (sandbox): tarjeta `4242 4242 4242 4242` (aprobada) o
 - Las boletas muestran la sección: "Platea · Oriental 101 · Fila C · Silla 12".
 - Las apps 1.6.2 o anteriores no entienden los planos propios: conviene aprobar esos eventos
   cuando la mayoría ya actualizó (el aviso de actualización sale solo).
+
+---
+
+## 10. Control de acceso, límites y boletas sin señal
+
+- **Control de acceso** (antes "taquilla"): rol `control` en `usuarios/{uid}.role`
+  (el rol antiguo `taquilla` sigue funcionando).
+- **Límite de compra:** cada cliente puede comprar hasta 10 boletas individuales (sillas, puestos y
+  general) y 2 palcos completos **por evento**, sumando lo que ya compró. El administrador no tiene
+  límite. Se cambia en `data.js` (`maxBoletasEvento`, `maxPalcosEvento`).
+  Si soporte aprueba más, se da un permiso en *Admin → Eventos → Permisos especiales de compra*
+  (colección `limites`). El servidor revisa el límite al pagar.
+- **Sin señal:** la app guarda la sesión, el perfil y las boletas en el celular y las muestra al
+  instante aunque no haya internet; el QR se genera en el celular. El equipo de control de acceso sí
+  necesita internet para validar.
+- **Fotos del QR:** no se puede impedir que otro celular le tome una foto a la pantalla. Por eso la
+  boleta tiene un **sello en vivo** (se mueve y marca la hora en segundos) y el QR cambia cada 30 s;
+  cada boleta solo entra una vez.
+- **Mis boletas:** arriba las que faltan por usar; las usadas o de eventos pasados van en
+  *Experiencias vividas*.

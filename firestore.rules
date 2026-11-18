@@ -36,7 +36,7 @@ service cloud.firestore {
     }
 
     function esStaff() {
-      return logueado() && rol() in ['admin', 'taquilla'];
+      return logueado() && rol() in ['admin', 'taquilla', 'control'];
     }
 
     // Perfil: cada quien ve y edita el suyo; nadie se puede asignar un rol solo
@@ -56,6 +56,12 @@ service cloud.firestore {
         && resource.data.estado in ['pendiente', 'rechazado'] && eventoDePromotor();
       allow delete: if esPromotor() && resource.data.promotorUid == request.auth.uid
         && resource.data.estado != 'aprobado';
+    }
+
+    // Permisos especiales de compra (soporte): el cliente ve el suyo; solo el admin los da
+    match /limites/{id} {
+      allow read: if esAdmin() || (logueado() && resource.data.uid == request.auth.uid);
+      allow write: if esAdmin();
     }
 
     // Imagen guía del plano (editor): solo su dueño y el admin

@@ -1225,3 +1225,119 @@ function htmlAvisoOficial(ev){
             </div>
         </div>`;
 }
+
+
+
+
+/* ========================================
+   LÍMITE DE COMPRA POR PERSONA Y EVENTO
+   Cuenta lo que ya compró en ese evento más el carrito.
+   El servidor revisa lo mismo al pagar (nadie se lo salta).
+======================================== */
+
+function conteoLimite(items){
+
+    return items.reduce((s, i) => {
+
+        if(i.tipo === "palco") s.palcos += i.cantidad || 1;
+
+        else s.boletas += i.tipo === "general" ? i.cantidad : 1;
+
+        return s;
+
+    }, { boletas: 0, palcos: 0 });
+}
+
+function limiteDe(permiso){
+
+    return {
+        boletas: permiso && permiso.boletas >= 0 ? permiso.boletas : CONFIG.maxBoletasEvento,
+        palcos: permiso && permiso.palcos >= 0 ? permiso.palcos : CONFIG.maxPalcosEvento
+    };
+}
+
+function mensajeLimite(tipo, lim, previas){
+
+    const ya = previas ? ` (ya tienes ${previas})` : "";
+
+    return tipo === "palco"
+        ? `Solo puedes comprar ${lim.palcos} ${lim.palcos === 1 ? "palco completo" : "palcos completos"} para este evento${ya}. Si deseas comprar más, contacta a soporte.`
+        : `Solo puedes comprar ${lim.boletas} boletas individuales para este evento${ya}. Si deseas comprar más, contacta a soporte.`;
+}
+
+// Devuelve el mensaje si "nuevo" pasa el límite; null si se puede agregar
+function revisarLimite(evento, carrito, comprasPrevias, permiso, nuevo, usuario){
+
+    if(usuario && usuario.role === "admin") return null;
+
+    const lim = limiteDe(permiso);
+
+    const previas = (comprasPrevias || []).filter(c => c.eventoId === evento.id).flatMap(c => c.items || []);
+
+    const antes = conteoLimite(previas);
+
+    const total = conteoLimite([...previas, ...carrito.filter(i => i.key !== nuevo.key), nuevo]);
+
+    if(nuevo.tipo === "palco" && total.palcos > lim.palcos) return mensajeLimite("palco", lim, antes.palcos);
+
+    if(nuevo.tipo !== "palco" && total.boletas > lim.boletas) return mensajeLimite("boleta", lim, antes.boletas);
+
+    return null;
+}
+
+function enlaceSoporte(evento){
+
+    const texto = `Hola, quiero comprar más boletas para ${evento ? `${evento.artista} (${evento.id})` : "un evento"}.`;
+
+    return `https://wa.me/${CONFIG.soporteWhatsApp}?text=${encodeURIComponent(texto)}`;
+}
+
+
+
+/* ========================================
+   BOLETAS: POR USAR / EXPERIENCIAS VIVIDAS
+======================================== */
+
+// ya entró todo el grupo, o el evento pasó hace más de 12 horas
+function esExperienciaVivida(compra){
+
+    if(estadoIngreso(compra).completa) return true;
+
+    const f = compra.fechaEvento ? new Date(compra.fechaEvento).getTime() : NaN;
+
+    return Number.isFinite(f) && f < Date.now() - 12 * 3600000;
+}
+
+
+
+/* ========================================
+   SELLO EN VIVO (contra fotos desde otro celular)
+   No hay forma de impedir que alguien le tome una foto a la pantalla
+   con otro teléfono. Por eso la boleta muestra un sello que se mueve
+   y marca la hora en segundos: una foto o un video viejo se notan,
+   y además el QR cambia cada 30 s y solo entra una vez.
+======================================== */
+
+function horaViva(){
+
+    return new Date(ahora()).toLocaleTimeString("es-CO", { hour:"2-digit", minute:"2-digit", second:"2-digit" });
+}
+
+function htmlSelloVivo(nombre){
+
+    return `
+        <div class="selloVivo" aria-hidden="true">
+            <span class="selloBrillo"></span>
+            <i class="selloPunto"></i>
+            <b class="relojVivo">${horaViva()}</b>
+            <span class="selloNombre">${esc(nombre || "")}</span>
+        </div>
+        <small class="selloAyuda">Sello en vivo: se mueve y marca la hora. Si no se mueve, es una foto.</small>`;
+}
+
+function actualizarSellosVivos(){
+
+    const t = horaViva();
+
+    document.querySelectorAll(".relojVivo").forEach(el => el.textContent = t);
+}

@@ -1,8 +1,11 @@
 {
-  "codigo": 12,
-  "nombre": "1.7.1",
+  "codigo": 13,
+  "nombre": "1.7.2",
   "notas": [
-    "Planos de estadio: primero el mapa por secciones y luego las sillas",
-    "Tribunas en curva y bloques girados en los planos de los promotores"
+    "Tus boletas abren al instante aunque no tengas señal",
+    "Sello en vivo en el QR contra fotos desde otro celular",
+    "Arreglado el botón para volver atrás",
+    "Mis boletas: las ya usadas pasan a Experiencias vividas",
+    "Límite de compra por evento: 10 boletas y 2 palcos"
   ]
 }

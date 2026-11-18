@@ -410,6 +410,11 @@ function abrirEvento(id){
 
     evento = ev;
 
+    // permiso especial de soporte para este cliente (si lo tiene)
+    limiteEvento = null;
+
+    DB.miLimite(id).then(l => { if(evento && evento.id === id) limiteEvento = l; }).catch(() => {});
+
     plano = planoDe(ev);
 
     ventasEvento = {};
@@ -879,11 +884,34 @@ function tocarAsiento(a){
     }
 }
 
+let limiteEvento = null;
+
 function agregar(item){
+
+    const aviso = revisarLimite(evento, carrito, compras, limiteEvento, item, usuario);
+
+    if(aviso){
+
+        mostrarLimite(aviso);
+
+        return;
+    }
 
     carrito.push(item);
 
     actualizarSeleccion();
+}
+
+function mostrarLimite(texto){
+
+    abrirSheet(`
+        <div class="auth">
+            <div class="verificaIcono"><i class="fa-solid fa-hand"></i></div>
+            <h2>Límite de compra</h2>
+            <p class="sheetSub">${esc(texto)}</p>
+            <a class="btnPrimario ancho" href="${enlaceSoporte(evento)}" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i> Escribir a soporte</a>
+            <button class="enlace" onclick="atras()">Entendido</button>
+        </div>`);
 }
 
 function quitar(key){
@@ -1855,6 +1883,19 @@ async function cargarBoletas(){
         return;
     }
 
+    // primero lo guardado en el celular: se ve al instante, haya o no señal
+    if(!compras.length) compras = JSON.parse(localStorage.getItem(claveCache()) || "[]");
+
+    renderBoletas();
+
+    // la sesión aún no se confirma (sin señal): se quedan las guardadas
+    if(!DB.usuario()){
+
+        $("avisoOffline").classList.add("show");
+
+        return;
+    }
+
     $("iconRefrescar").classList.add("fa-spin");
 
     try{
@@ -1878,11 +1919,17 @@ async function cargarBoletas(){
     renderBoletas();
 }
 
+let verVividas = false;
+
 function renderBoletas(){
 
     const cont = $("listaBoletas");
 
-    $("badgeBoletas").innerText = compras.length || "";
+    const activas = compras.filter(c => !esExperienciaVivida(c));
+
+    const vividas = compras.filter(esExperienciaVivida);
+
+    $("badgeBoletas").innerText = activas.length || "";
 
     if(!usuario){
 
@@ -1910,7 +1957,7 @@ function renderBoletas(){
         return;
     }
 
-    cont.innerHTML = compras.map(c => {
+    const tarjeta = c => {
 
         const ev = getEvento(c.eventoId);
 
@@ -1934,8 +1981,21 @@ function renderBoletas(){
                 <i class="fa-solid fa-qrcode"></i>
             </div>
         </article>`;
+    };
 
-    }).join("");
+    // arriba solo lo que falta por usar; lo ya vivido va aparte, plegado
+    cont.innerHTML = (activas.length ? activas.map(tarjeta).join("") : `
+        <div class="vacio">
+            <i class="fa-solid fa-ticket"></i>
+            <p>No tienes boletas por usar. ¡Tu próxima experiencia te está esperando!</p>
+            <button class="btnPrimario" onclick="irATab('explorar')">Explorar eventos</button>
+        </div>`) +
+        (vividas.length ? `
+        <button class="toggleVividas" onclick="verVividas = !verVividas; renderBoletas();">
+            <i class="fa-solid fa-clock-rotate-left"></i> Experiencias vividas (${vividas.length})
+            <i class="fa-solid fa-chevron-${verVividas ? "up" : "down"}"></i>
+        </button>
+        ${verVividas ? `<div class="listaVividas">${vividas.map(tarjeta).join("")}</div>` : ""}` : "");
 }
 
 function abrirBoleta(codigo){
@@ -2065,6 +2125,7 @@ function htmlQRBoleta(c, recien){
             <small>El código se renueva en <b id="qrSegundos">30</b> s</small>
         </div>
         <p class="codigoGrande">${esc(c.codigo)}</p>
+        ${htmlSelloVivo(usuario ? usuario.name : "")}
         <small class="ayudaQR"><i class="fa-solid fa-shield-halved"></i> QR dinámico y protegido: no se puede capturar la pantalla</small>`;
 }
 
@@ -2118,6 +2179,10 @@ function iniciarQR(codigo){
 
         const s = segundosQR();
 
+        actualizarSellosVivos();
+
+        if(!$("qrSegundos")) return;
+
         $("qrSegundos").innerText = s;
 
         $("qrBarra").style.width = (s / QR_PERIODO * 100) + "%";
@@ -2170,13 +2235,13 @@ function renderPerfil(){
             <div class="avatarGrande">${esc(usuario.name.split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase())}</div>
             <h2>${esc(usuario.name)}</h2>
             <p>${esc(usuario.email)}</p>
-            ${usuario.role === "admin" ? '<span class="tag">Administrador</span>' : usuario.role === "taquilla" ? '<span class="tag">Taquilla</span>' : ""}
+            ${usuario.role === "admin" ? '<span class="tag">Administrador</span>' : ["taquilla", "control"].includes(usuario.role) ? '<span class="tag">Control de acceso</span>' : ""}
             ${usuario.verificado ? "" : `<button class="chipVerificar" onclick="abrirVerificacion()"><i class="fa-solid fa-envelope"></i> Verifica tu correo</button>`}
         </div>
-        ${["admin", "taquilla"].includes(usuario.role) ? `
+        ${["admin", "taquilla", "control"].includes(usuario.role) ? `
         <button class="botonTaquilla" onclick="abrirEscaner()">
             <i class="fa-solid fa-qrcode"></i>
-            <div><b>Modo taquilla</b><small>Escanea las boletas en la entrada del evento</small></div>
+            <div><b>Control de acceso</b><small>Escanea las boletas en la entrada del evento</small></div>
             <i class="fa-solid fa-chevron-right"></i>
         </button>` : ""}
         ${opcionesPerfil(oscuro)}
@@ -2277,6 +2342,14 @@ if(sistemaClaro && sistemaClaro.addEventListener){
 
 function alCambiarUsuario(){
 
+    try{
+
+        if(usuario) localStorage.setItem("sesionApp", JSON.stringify(usuario));
+
+        else localStorage.removeItem("sesionApp");
+
+    }catch(e){}
+
     $("avatarBtn").innerHTML = usuario
         ? `<span>${esc(usuario.name[0].toUpperCase())}</span>`
         : '<i class="fa-solid fa-user"></i>';
@@ -2320,6 +2393,21 @@ renderExplorar();
 
 // eventos creados por el administrador (Firebase)
 sincronizarEventos().then(cambio => { if(cambio) renderExplorar(); });
+
+// Con mala señal (por ejemplo en la fila del evento) la sesión puede tardar en
+// confirmarse: mientras tanto se muestra la última sesión con sus boletas guardadas.
+try{
+
+    const guardada = JSON.parse(localStorage.getItem("sesionApp") || "null");
+
+    if(guardada && !usuario){
+
+        usuario = guardada;
+
+        alCambiarUsuario();
+    }
+
+}catch(e){}
 
 DB.onUsuario(u => {
 

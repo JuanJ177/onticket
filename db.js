@@ -37,6 +37,12 @@ const DB = (() => {
     // Firestore no acepta "undefined": se limpia el objeto antes de guardarlo
     const limpiar = obj => JSON.parse(JSON.stringify(obj));
 
+    // con mala señal una consulta puede quedarse esperando mucho: se corta a tiempo
+    const conTiempo = (promesa, ms, mensaje = "Sin conexión") => Promise.race([
+        promesa,
+        new Promise((_, falla) => setTimeout(() => falla(new Error(mensaje)), ms))
+    ]);
+
     const ordenar = lista => lista.sort((a, b) => (b.fechaCompra || "").localeCompare(a.fechaCompra || ""));
 
     const vacioVentas = () => ({ ids: [], general: {} });
@@ -151,6 +157,9 @@ const DB = (() => {
             fn.useEmulator("127.0.0.1", 5001);
         }
 
+        // copia local de la base de datos: sin señal se sigue leyendo lo último que llegó
+        fs.enablePersistence({ synchronizeTabs: true }).catch(() => {});
+
         async function llamar(nombre, datos){
 
             try{
@@ -194,11 +203,12 @@ const DB = (() => {
 
             const ref = fs.doc(`usuarios/${u.uid}`);
 
-            let datos = {};
+            // el último perfil conocido sirve si no hay señal
+            let datos = (() => { try{ return JSON.parse(localStorage.getItem("perfil_" + u.uid)) || {}; }catch(e){ return {}; } })();
 
             try{
 
-                const snap = await ref.get();
+                const snap = await conTiempo(ref.get(), 4000);
 
                 if(snap.exists){
 
@@ -211,6 +221,8 @@ const DB = (() => {
 
                     await ref.set({ ...datos, creado: firebase.firestore.FieldValue.serverTimestamp() });
                 }
+
+                try{ localStorage.setItem("perfil_" + u.uid, JSON.stringify({ name: datos.name, role: datos.role })); }catch(e){}
 
             }catch(e){}
 
@@ -518,9 +530,59 @@ const DB = (() => {
 
                 if(!usuario) return [];
 
-                const snap = await fs.collection("compras").where("uid", "==", usuario.uid).get();
+                const snap = await conTiempo(fs.collection("compras").where("uid", "==", usuario.uid).get(), 8000);
+
+                // si vino de la copia local es porque no hay señal: se usan las boletas guardadas
+                if(snap.metadata.fromCache) throw new Error("Sin conexión");
 
                 return ordenar(snap.docs.map(d => d.data()));
+            },
+
+            /* ----- permisos especiales de compra (soporte) ----- */
+
+            async miLimite(eventoId){
+
+                if(!usuario) return null;
+
+                try{
+
+                    const snap = await conTiempo(fs.doc(`limites/${eventoId}__${usuario.uid}`).get(), 4000);
+
+                    return snap.exists ? snap.data() : null;
+
+                }catch(e){
+
+                    return null;
+                }
+            },
+
+            async listarLimites(){
+
+                const snap = await fs.collection("limites").get();
+
+                return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            },
+
+            // el admin busca al cliente por su correo
+            async guardarLimite(eventoId, correo, boletas, palcos, nota){
+
+                const r = await fs.collection("usuarios").where("email", "==", correo.trim().toLowerCase()).limit(1).get();
+
+                const r2 = r.empty ? await fs.collection("usuarios").where("email", "==", correo.trim()).limit(1).get() : r;
+
+                if(r2.empty) throw new Error("No hay una cuenta con ese correo");
+
+                const uid = r2.docs[0].id;
+
+                await fs.doc(`limites/${eventoId}__${uid}`).set({
+                    eventoId, uid, correo: correo.trim(), boletas, palcos, nota: nota || "",
+                    por: usuario ? usuario.email : "", fecha: new Date().toISOString()
+                });
+            },
+
+            async eliminarLimite(id){
+
+                await fs.doc(`limites/${id}`).delete();
             },
 
             async eliminarCompra(compra){
@@ -884,6 +946,38 @@ const DB = (() => {
                 if(!usuario) return [];
 
                 return ordenar(leer("compras", []).filter(c => c.uid === usuario.uid));
+            },
+
+            async miLimite(eventoId){
+
+                return usuario ? (leer("limites", {})[`${eventoId}__${usuario.uid}`] || null) : null;
+            },
+
+            async listarLimites(){
+
+                return Object.entries(leer("limites", {})).map(([id, l]) => ({ id, ...l }));
+            },
+
+            async guardarLimite(eventoId, correo, boletas, palcos, nota){
+
+                const u = leer("users", []).find(x => x.email === correo.trim());
+
+                if(!u) throw new Error("No hay una cuenta con ese correo");
+
+                const todos = leer("limites", {});
+
+                todos[`${eventoId}__${u.email}`] = { eventoId, uid: u.email, correo: u.email, boletas, palcos, nota: nota || "", fecha: new Date().toISOString() };
+
+                escribir("limites", todos);
+            },
+
+            async eliminarLimite(id){
+
+                const todos = leer("limites", {});
+
+                delete todos[id];
+
+                escribir("limites", todos);
             },
 
             async eliminarCompra(compra){
