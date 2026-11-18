@@ -12,6 +12,7 @@
      validarBoleta     la taquilla revisa el QR (firma secreta + hora del servidor)
      registrarIngreso  la taquilla marca cuántas personas entraron
      enviarCorreo      envía el correo de boletas / factura (Gmail)
+     armarPlanoIA      Claude arma el plano de un evento a partir de la imagen
 ======================================== */
 
 const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
@@ -43,6 +44,12 @@ const WOMPI_PUBLICA = "pub_test_dLghZ9ZwXMmu497xasxMvzoO5Mq04uzO";
 const WOMPI_API = "https://sandbox.wompi.co/v1";
 const WOMPI_INTEGRIDAD = defineSecret("WOMPI_INTEGRIDAD");
 const WOMPI_EVENTOS = defineSecret("WOMPI_EVENTOS");
+
+// llave de la API de Anthropic (Claude) para armar planos con IA
+const ANTHROPIC_KEY = defineSecret("ANTHROPIC_KEY");
+
+// cuántos planos puede armar con IA cada persona al día (cada uno cuesta)
+const USOS_IA_DIA = { promotor: 10, admin: 30 };
 
 // minutos que quedan apartadas las sillas mientras se paga en Wompi
 const MINUTOS_PAGO = 20;
@@ -796,6 +803,90 @@ exports.verificarPago = onCall(async request => {
    Solo ve sus propios eventos y nunca los datos personales de
    los compradores (nombre, correo, factura ni clave del QR).
 ======================================== */
+
+/* ========================================
+   ARMAR PLANO CON IA
+   El promotor (o el administrador) manda la imagen del plano; Claude
+   devuelve las localidades y los bloques para el editor. No guarda nada:
+   el promotor revisa, corrige y pone los precios antes de usarlo.
+======================================== */
+
+exports.armarPlanoIA = onCall({ secrets: [ANTHROPIC_KEY], timeoutSeconds: 300, memory: "512MiB", maxInstances: 3 }, async request => {
+
+    const auth = exigirUsuario(request, false);
+
+    const rol = (await perfil(auth.uid)).role;
+
+    if(!USOS_IA_DIA[rol]) throw falla("permission-denied", "Armar con IA es solo para promotores");
+
+    const { imagen, ancho, alto, nota } = request.data || {};
+
+    const m = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(String(imagen || ""));
+
+    if(!m) throw falla("invalid-argument", "Sube primero la imagen del plano");
+
+    if(m[2].length > 2000000) throw falla("invalid-argument", "La imagen es demasiado pesada");
+
+    const anchoImg = Number(ancho), altoImg = Number(alto);
+
+    if(!(anchoImg >= 100 && anchoImg <= 5000 && altoImg >= 100 && altoImg <= 5000)) throw falla("invalid-argument", "La imagen no tiene un tamaño válido");
+
+    // cupo diario por persona (se descuenta antes de llamar a la IA)
+    const hoy = new Date(Date.now() - 5 * 3600000).toISOString().slice(0, 10);
+
+    const refUso = db.doc(`usoIA/${auth.uid}`);
+
+    await db.runTransaction(async tx => {
+
+        const u = (await tx.get(refUso)).data() || {};
+
+        const n = u.dia === hoy ? u.n || 0 : 0;
+
+        if(n >= USOS_IA_DIA[rol]) throw falla("resource-exhausted", `Ya usaste los ${USOS_IA_DIA[rol]} planos con IA de hoy. Mañana puedes armar más.`);
+
+        tx.set(refUso, { dia: hoy, n: n + 1, ultimo: FieldValue.serverTimestamp() }, { merge: true });
+    });
+
+    const Anthropic = require("@anthropic-ai/sdk").default;
+
+    const { armarConIA } = require("./planoIA");
+
+    const cliente = new Anthropic({ apiKey: ANTHROPIC_KEY.value(), maxRetries: 2, timeout: 240000 });
+
+    let r;
+
+    try{
+
+        r = await armarConIA(cliente, { imagenBase64: m[2], tipoImagen: m[1], anchoImg, altoImg, nota: String(nota || "").slice(0, 500) });
+
+    }catch(e){
+
+        // si falló la IA, no se cobra el intento
+        await refUso.update({ n: FieldValue.increment(-1) }).catch(() => {});
+
+        if(e instanceof Anthropic.AuthenticationError) throw falla("failed-precondition", "La llave de la IA no es válida. Avísale al administrador.");
+
+        if(e instanceof Anthropic.RateLimitError) throw falla("resource-exhausted", "La IA está ocupada. Intenta en un minuto.");
+
+        if(e instanceof Anthropic.APIError){
+
+            console.error("armarPlanoIA", e.status, e.message);
+
+            throw falla("unavailable", "La IA no respondió. Intenta de nuevo en un momento.");
+        }
+
+        throw falla("internal", e.message || "No se pudo armar el plano");
+    }
+
+    // ¿quedó listo para vender? (los precios los pone el promotor)
+    let aviso = "";
+
+    try{ cat.validarDiseno(r.diseno); }catch(e){ aviso = e.message; }
+
+    console.log("armarPlanoIA", auth.uid, r.diseno.bloques.length, "bloques", r.uso);
+
+    return { diseno: r.diseno, notas: r.notas, aviso };
+});
 
 exports.ventasPromotor = onCall(async request => {
 

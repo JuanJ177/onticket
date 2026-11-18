@@ -36,6 +36,10 @@ function abrirEditorPlano(){
 
     $("opacidadFondo").value = opacidadFondo;
 
+    $("estadoIA").className = "ayuda";
+
+    $("estadoIA").innerText = "La IA lee la imagen y arma las localidades y los bloques. Tú revisas, corriges y pones los precios.";
+
     renderEditorPlano();
 
     abrirModal("editorPlanoModal");
@@ -616,6 +620,69 @@ function cargarFondoPlano(input){
     lector.readAsDataURL(archivo);
 
     input.value = "";
+}
+
+// Claude lee la imagen guía y arma las localidades y los bloques
+async function armarPlanoConIA(){
+
+    if(!fondoPlano){
+
+        toast("Primero sube la imagen del plano", "fa-image");
+
+        return;
+    }
+
+    if(disenoEditor.bloques.length && !confirm("La IA reemplaza los bloques y localidades que ya tienes. ¿Continuar?")) return;
+
+    const btn = $("btnIA"), estado = $("estadoIA");
+
+    const img = await new Promise((ok, mal) => { const i = new Image(); i.onload = () => ok(i); i.onerror = mal; i.src = fondoPlano; });
+
+    btn.disabled = true;
+
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> La IA está leyendo tu plano...';
+
+    estado.className = "ayuda";
+
+    estado.innerText = "Puede tardar uno o dos minutos. No cierres esta ventana.";
+
+    try{
+
+        const r = await DB.armarPlanoIA(fondoPlano, img.naturalWidth, img.naturalHeight, $("notaIA").value.trim());
+
+        disenoEditor = r.diseno;
+
+        bloqueSel = null;
+
+        $("planoAncho").value = disenoEditor.w;
+
+        $("planoAlto").value = disenoEditor.h;
+
+        renderEditorPlano();
+
+        const numeradas = disenoEditor.bloques.reduce((n, b) => n + ubicacionesBloque(b), 0);
+
+        const generales = disenoEditor.bloques.filter(b => b.tipo === "general").reduce((n, b) => n + (b.capacidad || 0), 0);
+
+        estado.className = "ayuda listo";
+
+        estado.innerHTML = `<b>Listo:</b> ${disenoEditor.zonas.length} localidades, ${disenoEditor.bloques.length} bloques, ` +
+            `${numeradas.toLocaleString("es-CO")} ubicaciones numeradas${generales ? ` y ${generales.toLocaleString("es-CO")} de pie` : ""}. ` +
+            `Revisa que coincida con la imagen y <b>pon los precios reales</b>.` +
+            (r.notas ? `<br>${esc(r.notas)}` : "") + (r.aviso ? `<br>Falta: ${esc(r.aviso)}` : "");
+
+    }catch(e){
+
+        estado.className = "ayuda error";
+
+        estado.innerText = e.message;
+
+    }finally{
+
+        btn.disabled = false;
+
+        btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Armar con IA';
+    }
 }
 
 function quitarFondoPlano(){

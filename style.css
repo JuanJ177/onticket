@@ -5192,6 +5192,25 @@ body.dark .usadaTag{
 
 .subirFondo{ cursor:pointer; justify-content:center; }
 
+.iaPlano{ display:flex; flex-direction:column; gap:8px; border-top:1px dashed var(--border); padding-top:10px; }
+
+.iaPlano textarea{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:8px 10px;
+    color:var(--text);
+    font:inherit;
+    font-size:13px;
+    resize:vertical;
+}
+
+.iaPlano .primaryBtn{ justify-content:center; }
+
+.iaPlano .ayuda.listo{ color:var(--text); background:var(--brandSoft); border-radius:10px; padding:8px 10px; }
+
+.iaPlano .ayuda.error{ color:#e53935; }
+
 .botonesAgregar{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 
 .botonesAgregar button{

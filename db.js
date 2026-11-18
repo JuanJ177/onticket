@@ -434,6 +434,19 @@ const DB = (() => {
             },
 
             // el servidor calcula las ventas de los eventos del promotor
+            // Claude arma el plano a partir de la imagen (puede tardar hasta un par de minutos)
+            async armarPlanoIA(imagen, ancho, alto, nota){
+
+                try{
+
+                    return (await fn.httpsCallable("armarPlanoIA", { timeout: 300000 })({ imagen, ancho, alto, nota })).data;
+
+                }catch(e){
+
+                    throw new Error(e.message || "No se pudo armar el plano");
+                }
+            },
+
             async ventasPromotor(){
 
                 return llamar("ventasPromotor", {});
@@ -851,6 +864,11 @@ const DB = (() => {
             async cargarFondoPlano(id){
 
                 return leer("fondoPlano_" + id, null);
+            },
+
+            async armarPlanoIA(){
+
+                throw new Error("Armar con IA necesita conexión con el servidor");
             },
 
             async ventasPromotor(){

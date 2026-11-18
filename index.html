@@ -42,9 +42,9 @@
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
     >
 
-    <link rel="stylesheet" href="style.css?v=16">
+    <link rel="stylesheet" href="style.css?v=17">
 
-    <link rel="stylesheet" href="planos.css?v=16">
+    <link rel="stylesheet" href="planos.css?v=17">
 
 </head>
 
@@ -1128,6 +1128,11 @@
                         </label>
                         <button class="ghostBtn" onclick="quitarFondoPlano()">Quitar</button>
                     </div>
+                    <div class="iaPlano">
+                        <textarea id="notaIA" rows="2" maxlength="500" placeholder="Opcional: pistas para la IA (ej. la Platea tiene 20 filas de 30 sillas)"></textarea>
+                        <button class="primaryBtn" id="btnIA" onclick="armarPlanoConIA()"><i class="fa-solid fa-wand-magic-sparkles"></i> Armar con IA</button>
+                        <p class="ayuda" id="estadoIA">La IA lee la imagen y arma las localidades y los bloques. Tú revisas, corriges y pones los precios.</p>
+                    </div>
                     <label>Transparencia de la guía
                         <input type="range" id="opacidadFondo" min="0.1" max="1" step="0.05" oninput="cambiarOpacidadFondo(this.value)">
                     </label>
@@ -1566,14 +1571,14 @@
 <!-- Lector de QR para la taquilla -->
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 
-<script src="firebase-config.js?v=16"></script>
-<script src="data.js?v=16"></script>
-<script src="planos.js?v=16"></script>
-<script src="core.js?v=16"></script>
-<script src="db.js?v=16"></script>
-<script src="script.js?v=16"></script>
-<script src="editor-plano.js?v=16"></script>
-<script src="admin.js?v=16"></script>
+<script src="firebase-config.js?v=17"></script>
+<script src="data.js?v=17"></script>
+<script src="planos.js?v=17"></script>
+<script src="core.js?v=17"></script>
+<script src="db.js?v=17"></script>
+<script src="script.js?v=17"></script>
+<script src="editor-plano.js?v=17"></script>
+<script src="admin.js?v=17"></script>
 
 </body>
 </html>

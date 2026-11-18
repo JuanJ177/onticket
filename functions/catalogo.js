@@ -203,5 +203,5 @@ function digitoVerificacion(nit){
 module.exports = {
     CONFIG, LUGARES, EVENTOS, PLANOS, TIPO_ZONA,
     lugarDe, planoDe, precioZona, precioPuesto, fechaReal, textoFecha,
-    construirItems, calcularCostos, digitoVerificacion
+    construirItems, calcularCostos, digitoVerificacion, validarDiseno
 };

@@ -261,3 +261,16 @@ Datos de prueba de Wompi (sandbox): tarjeta `4242 4242 4242 4242` (aprobada) o
 - La boleta guarda el **titular**: nombre y solo los **últimos 4 dígitos** del documento
   (nunca el número completo). Control de acceso lo ve al escanear para comparar con la cédula.
 - Los eventos que ya están en la nube no toman cambios de `data.js`: la edad mínima se pone desde el panel.
+
+## 12. Armar plano con IA
+
+- En el editor de planos: **Subir plano** (la imagen) → opcional escribir pistas → **Armar con IA**.
+  La función `armarPlanoIA` (archivo `functions/planoIA.js`) manda la imagen a Claude (modelo
+  `claude-opus-5-5`) y recibe localidades y bloques en JSON con esquema fijo. El servidor los
+  escala para que cada silla mida lo que se ve en la imagen y respeta los límites del editor.
+- No guarda nada: el promotor revisa, corrige y pone los precios reales antes de usar el plano.
+- Solo promotores (10 al día) y administradores (30 al día); el cupo está en `usoIA/{uid}`
+  (nadie lo puede leer ni cambiar desde el navegador). Si la IA falla, el intento no se cuenta.
+- Costo aproximado: 600 a 3.000 COP por plano según el tamaño.
+- La llave de la API está en Secret Manager como `ANTHROPIC_KEY`:
+  `firebase functions:secrets:set ANTHROPIC_KEY` (la escribe el dueño en su terminal; nunca en el código).
